@@ -280,22 +280,22 @@ PHASE 3: GROWTH & MONETIZATION MULTIPLIERS
 
 18. API ACCESS (FOR DEVELOPERS & AGENCIES)
 -------------------------------------------
-[ ] 18.1 Design REST API (OpenAPI spec):
+[x] 18.1 Design REST API (OpenAPI spec):
          - POST /api/v1/projects (create project, upload video)
          - GET /api/v1/projects/{id} (get status + results)
          - POST /api/v1/projects/{id}/render (trigger render)
          - GET /api/v1/projects/{id}/clips (list rendered clips)
          - GET /api/v1/usage (check credits remaining)
-[ ] 18.2 API key generation (per user, revocable)
-[ ] 18.3 Rate limiting per API key (based on plan tier)
-[ ] 18.4 Webhook notifications:
+[x] 18.2 API key generation (per user, revocable)
+[x] 18.3 Rate limiting per API key (based on plan tier)
+[x] 18.4 Webhook notifications:
          - project.completed (all clips rendered)
          - project.failed (pipeline error)
          - credits.low (10% remaining)
-[ ] 18.5 Batch processing endpoint (submit multiple videos)
-[ ] 18.6 API documentation site (Swagger UI + written guides)
-[ ] 18.7 SDK/client libraries (Python, Node.js)
-[ ] 18.8 Sandbox environment for testing
+[x] 18.5 Batch processing endpoint (submit multiple videos)
+[x] 18.6 API documentation site (Swagger UI + written guides)
+[x] 18.7 SDK/client libraries (Python, Node.js)
+[x] 18.8 Sandbox environment for testing
 
 19. CONTENT SAFETY & MODERATION
 --------------------------------
