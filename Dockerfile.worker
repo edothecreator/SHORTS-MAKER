@@ -1,0 +1,43 @@
+# Dockerfile.worker — Render Worker with FFmpeg + libass
+# Production Task 6.2
+#
+# The render worker pulls jobs from the Redis queue, runs FFmpeg with
+# subtitle burning (libass), and uploads results to object storage.
+#
+# For GPU-accelerated encoding (NVENC), swap the base image:
+#   FROM nvidia/cuda:12.2.0-runtime-ubuntu22.04
+# and install Python 3.11 manually. The CMD remains the same.
+
+FROM python:3.11-slim
+
+# Install system dependencies: FFmpeg with full libass subtitle support,
+# plus fonts for subtitle rendering.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    libass-dev \
+    libass9 \
+    fonts-dejavu-core \
+    fonts-freefont-ttf \
+    fontconfig \
+    libsm6 \
+    libxext6 \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/* \
+    && fc-cache -f -v
+
+# Create app directory
+WORKDIR /app
+
+# Copy requirements first for Docker layer caching
+COPY backend/requirements.txt /app/backend/requirements.txt
+RUN pip install --no-cache-dir -r /app/backend/requirements.txt
+
+# Copy backend source (worker is a subpackage of backend)
+COPY backend/ /app/backend/
+
+# The worker does not expose a port — it pulls from the Redis job queue.
+# For GPU builds, ensure the NVIDIA Container Toolkit is installed on the
+# host and use: docker run --gpus all ...
+
+# Run the render worker
+CMD ["python", "-m", "backend.worker.main"]

@@ -99,27 +99,27 @@ PHASE 1: FOUNDATION (Must have before ANY user pays)
 
 6. DEPLOYMENT & INFRASTRUCTURE
 -------------------------------
-[ ] 6.1  Create Dockerfile for backend (FastAPI + FFmpeg + Whisper)
-[ ] 6.2  Create Dockerfile for render worker
-[ ] 6.3  Create Dockerfile for frontend (Next.js production build)
-[ ] 6.4  Create docker-compose.yml for local development (all services)
-[ ] 6.5  Set up cloud hosting:
+[x] 6.1  Create Dockerfile for backend (FastAPI + FFmpeg + Whisper)
+[x] 6.2  Create Dockerfile for render worker
+[x] 6.3  Create Dockerfile for frontend (Next.js production build)
+[x] 6.4  Create docker-compose.yml for local development (all services)
+[x] 6.5  Set up cloud hosting:
          - Option A: Railway (simplest, ~$20-50/mo)
          - Option B: Fly.io (good for workers, ~$20-50/mo)
          - Option C: AWS ECS (most scalable, ~$50-200/mo)
-[ ] 6.6  Configure environment variables in cloud (secrets management)
-[ ] 6.7  Set up custom domain (buy domain, configure DNS)
-[ ] 6.8  Set up HTTPS (auto-managed SSL via hosting provider)
-[ ] 6.9  Deploy frontend to Vercel (free tier, automatic deploys)
-[ ] 6.10 Set up CI/CD pipeline (GitHub Actions):
+[x] 6.6  Configure environment variables in cloud (secrets management)
+[x] 6.7  Set up custom domain (buy domain, configure DNS)
+[x] 6.8  Set up HTTPS (auto-managed SSL via hosting provider)
+[x] 6.9  Deploy frontend to Vercel (free tier, automatic deploys)
+[x] 6.10 Set up CI/CD pipeline (GitHub Actions):
          - Run tests on PR
          - Build Docker images on merge to main
          - Auto-deploy to staging
          - Manual promote to production
-[ ] 6.11 Set up staging environment (separate from production)
-[ ] 6.12 Configure auto-scaling for render workers (scale on queue depth)
-[ ] 6.13 Set up health check endpoints (/health, /ready)
-[ ] 6.14 Configure uptime monitoring (UptimeRobot or Better Uptime, free tier)
+[x] 6.11 Set up staging environment (separate from production)
+[x] 6.12 Configure auto-scaling for render workers (scale on queue depth)
+[x] 6.13 Set up health check endpoints (/health, /ready)
+[x] 6.14 Configure uptime monitoring (UptimeRobot or Better Uptime, free tier)
 
 7. CORS & SECURITY HARDENING
 -----------------------------

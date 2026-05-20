@@ -1,0 +1,209 @@
+# docker-compose.yml — Shorts Engine Studio (All Services)
+# Production Task 6.4
+#
+# Brings up the full stack: backend API, render worker, frontend,
+# PostgreSQL, and Redis.
+#
+# Usage:
+#   docker-compose up --build        # Start all services
+#   docker-compose up -d             # Start in detached mode
+#   docker-compose down -v           # Stop and remove volumes
+#
+# ============================================================================
+# DEPLOYMENT NOTES (Tasks 6.5–6.9, 6.11–6.12, 6.14):
+#
+# 6.5 Cloud Hosting Options:
+#   - Railway (simplest): Connect repo, auto-deploys on push, ~$20-50/mo
+#   - Fly.io: Great for workers with auto-scaling, ~$20-50/mo
+#   - AWS ECS: Most scalable, use Fargate for serverless containers, ~$50-200/mo
+#   Each service in this compose file maps to one cloud service/task.
+#
+# 6.6 Environment Variables / Secrets:
+#   - Never commit .env to git. Use cloud provider's secrets management.
+#   - Railway: Settings → Variables (auto-injects into containers)
+#   - Fly.io: `fly secrets set KEY=VALUE`
+#   - AWS: SSM Parameter Store or Secrets Manager
+#
+# 6.7 Custom Domain:
+#   - Purchase domain (Namecheap, Cloudflare Registrar, etc.)
+#   - Point DNS A/CNAME records to your hosting provider's IP/endpoint
+#   - Frontend: CNAME → Vercel deployment URL
+#   - API: A record or CNAME → cloud provider's load balancer
+#
+# 6.8 HTTPS/SSL:
+#   - Railway/Fly.io: Automatic SSL via Let's Encrypt (zero config)
+#   - Vercel: Automatic SSL for frontend
+#   - AWS: Use ACM (AWS Certificate Manager) + ALB for free SSL
+#
+# 6.9 Frontend on Vercel:
+#   - Connect GitHub repo, set root directory to "frontend/"
+#   - Vercel auto-detects Next.js, builds and deploys on push
+#   - Set env vars: NEXTAUTH_URL, NEXTAUTH_SECRET, NEXT_PUBLIC_API_URL
+#
+# 6.11 Staging Environment:
+#   - Create a separate deployment (e.g., staging.yourdomain.com)
+#   - Use a separate database and Redis instance
+#   - CI/CD auto-deploys to staging on merge to main
+#   - Manual promotion to production via GitHub Actions workflow_dispatch
+#
+# 6.12 Auto-scaling Workers:
+#   - Railway: Scale render workers based on queue depth (custom metrics)
+#   - Fly.io: `fly autoscale` based on queue length
+#   - AWS ECS: Target tracking scaling policy on custom CloudWatch metric
+#     (e.g., Redis queue length > 5 → add worker, < 2 → remove worker)
+#
+# 6.14 Uptime Monitoring:
+#   - Sign up for UptimeRobot (free) or Better Uptime
+#   - Add monitors for:
+#     * GET https://api.yourdomain.com/health (expect 200)
+#     * GET https://api.yourdomain.com/ready (expect 200)
+#     * GET https://yourdomain.com (frontend, expect 200)
+#   - Configure alerting: email + Slack/Discord webhook
+#   - Set check interval to 5 minutes (free tier) or 1 minute (paid)
+# ============================================================================
+
+version: "3.8"
+
+services:
+  # --------------------------------------------------------------------------
+  # PostgreSQL Database
+  # --------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-shorts_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shorts_password}
+      POSTGRES_DB: ${POSTGRES_DB:-shorts_engine}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-shorts_user} -d ${POSTGRES_DB:-shorts_engine}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - shorts_network
+
+  # --------------------------------------------------------------------------
+  # Redis (Job Queue + Caching)
+  # --------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - shorts_network
+
+  # --------------------------------------------------------------------------
+  # Backend API (FastAPI)
+  # --------------------------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-shorts_user}:${POSTGRES_PASSWORD:-shorts_password}@postgres:5432/${POSTGRES_DB:-shorts_engine}
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - shorts_network
+
+  # --------------------------------------------------------------------------
+  # Render Worker
+  # --------------------------------------------------------------------------
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-shorts_user}:${POSTGRES_PASSWORD:-shorts_password}@postgres:5432/${POSTGRES_DB:-shorts_engine}
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # For GPU support, uncomment:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    networks:
+      - shorts_network
+
+  # --------------------------------------------------------------------------
+  # Frontend (Next.js)
+  # --------------------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend:8000
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - shorts_network
+
+# ==============================================================================
+# Volumes (persistent data)
+# ==============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# ==============================================================================
+# Networks
+# ==============================================================================
+networks:
+  shorts_network:
+    driver: bridge

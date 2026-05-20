@@ -975,3 +975,86 @@ async def stream_task(task_id: str, request: Request):
             "Connection": "keep-alive",
         },
     )
+
+
+
+# ---------------------------------------------------------------------------
+# Health & Readiness Endpoints
+# ---------------------------------------------------------------------------
+#
+# Added by task 6.13. These endpoints support container orchestration
+# (Docker HEALTHCHECK, Kubernetes liveness/readiness probes) and uptime
+# monitoring services.
+#
+# * GET /health — Lightweight liveness check. Returns 200 if the process is
+#   running and can serve HTTP. Does NOT check external dependencies.
+#
+# * GET /ready — Readiness check. Verifies connectivity to PostgreSQL and
+#   Redis. Returns 200 only when both are reachable. Orchestrators should
+#   route traffic away from instances that fail this probe.
+
+
+@app.get("/health")
+async def health_check() -> dict:
+    """Liveness probe: confirms the application process is alive.
+
+    Returns HTTP 200 unconditionally. Used by Docker HEALTHCHECK and
+    uptime monitors (UptimeRobot, Better Uptime) to verify the process
+    has not crashed.
+    """
+    return {"status": "healthy"}
+
+
+@app.get("/ready")
+async def readiness_check() -> dict:
+    """Readiness probe: confirms the application can serve requests.
+
+    Checks connectivity to both PostgreSQL (via asyncpg) and Redis.
+    Returns HTTP 200 with {"status": "ready"} when both are reachable.
+    Returns HTTP 503 with details about which dependency is unreachable
+    so orchestrators can route traffic to healthy instances.
+    """
+    errors: list[str] = []
+
+    # --- Check PostgreSQL ---
+    try:
+        import asyncpg
+
+        database_url = os.environ.get("DATABASE_URL", "")
+        if database_url:
+            conn = await asyncpg.connect(database_url, timeout=5.0)
+            await conn.execute("SELECT 1")
+            await conn.close()
+        else:
+            # If DATABASE_URL is not set, skip DB check (local dev without DB)
+            pass
+    except Exception as exc:
+        errors.append(f"postgres: {exc}")
+
+    # --- Check Redis ---
+    try:
+        import redis as redis_lib
+
+        redis_url = os.environ.get("REDIS_URL", "")
+        if redis_url:
+            r = redis_lib.from_url(redis_url, socket_connect_timeout=5)
+            r.ping()
+            r.close()
+        else:
+            # If REDIS_URL is not set, skip Redis check (local dev without Redis)
+            pass
+    except Exception as exc:
+        errors.append(f"redis: {exc}")
+
+    if errors:
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "not_ready",
+                "errors": errors,
+            },
+        )
+
+    return {"status": "ready"}

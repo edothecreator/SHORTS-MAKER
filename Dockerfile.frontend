@@ -1,0 +1,61 @@
+# Dockerfile.frontend — Next.js Production Build (Multi-stage)
+# Production Task 6.3
+#
+# Stage 1: Install dependencies and build the production bundle.
+# Stage 2: Run the Next.js production server with minimal image size.
+
+# ---- Stage 1: Build ----
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files for layer caching
+COPY frontend/package.json frontend/package-lock.json ./
+
+# Install all dependencies (including devDependencies for the build)
+RUN npm ci
+
+# Copy frontend source
+COPY frontend/ ./
+
+# Build the Next.js production bundle
+# Set NEXT_TELEMETRY_DISABLED to avoid telemetry during CI builds
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run build
+
+# ---- Stage 2: Production Runtime ----
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+# Set production environment
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Create a non-root user for security
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# Copy the build output and necessary files from the builder stage
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/package-lock.json ./package-lock.json
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public 2>/dev/null || true
+COPY --from=builder /app/next.config.js ./next.config.js 2>/dev/null || true
+
+# Set correct permissions
+RUN chown -R nextjs:nodejs /app
+
+# Switch to non-root user
+USER nextjs
+
+# Expose the Next.js port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
+
+# Start the Next.js production server
+CMD ["npm", "start"]

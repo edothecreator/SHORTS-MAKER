@@ -1,0 +1,51 @@
+# docker-compose.override.yml — Development Overrides
+#
+# Automatically loaded by `docker-compose up` alongside docker-compose.yml.
+# Mounts source code as volumes for live-reload during development.
+#
+# To run production mode WITHOUT these overrides:
+#   docker-compose -f docker-compose.yml up --build
+
+version: "3.8"
+
+services:
+  # --------------------------------------------------------------------------
+  # Backend: Hot-reload with uvicorn --reload
+  # --------------------------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    volumes:
+      - ./backend:/app/backend:cached
+    command: ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    environment:
+      DEBUG: "1"
+
+  # --------------------------------------------------------------------------
+  # Worker: Auto-restart on code change (using watchfiles)
+  # --------------------------------------------------------------------------
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - ./backend:/app/backend:cached
+    command: ["python", "-m", "backend.worker.main"]
+    environment:
+      DEBUG: "1"
+
+  # --------------------------------------------------------------------------
+  # Frontend: Next.js dev server with hot module replacement
+  # --------------------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    volumes:
+      - ./frontend:/app:cached
+      - /app/node_modules
+      - /app/.next
+    command: ["npm", "run", "dev"]
+    environment:
+      NODE_ENV: development
