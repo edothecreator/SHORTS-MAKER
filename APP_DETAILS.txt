@@ -1,0 +1,233 @@
+================================================================================
+SHORTS ENGINE STUDIO — COMPLETE APP DETAILS
+================================================================================
+
+1. WHAT IT IS
+-------------
+A local-first web application that transforms long-form video (up to 2 GB) into
+multiple short-form vertical (9:16) clips with burned-in karaoke-style subtitles
+and a title overlay. The user uploads a video, configures preferences, and gets
+ready-to-post shorts for TikTok, YouTube Shorts, and Instagram Reels.
+
+2. ARCHITECTURE
+---------------
+"Hybrid Local-First" design:
+- Backend (FastAPI/Python): Handles audio extraction, local Whisper transcription,
+  and Gemini AI segment selection. Stores NOTHING permanently.
+- Frontend (Next.js 14): Handles ALL video rendering in the browser via ffmpeg.wasm.
+  No video ever leaves the user's machine for rendering.
+
+3. TECH STACK
+-------------
+Backend:
+  - Python 3.11+
+  - FastAPI + Uvicorn (HTTP server)
+  - OpenAI Whisper (local CPU transcription, word-level timestamps)
+  - Google Gemini 2.5 Flash (AI segment selection via google-genai SDK)
+  - python-multipart, python-dotenv, pydantic
+
+Frontend:
+  - Next.js 14 (App Router)
+  - React 18
+  - TypeScript
+  - Tailwind CSS (dark theme)
+  - @ffmpeg/ffmpeg v0.12 + @ffmpeg/core 0.12.6 (browser-side video rendering)
+  - @ffmpeg/util (file utilities)
+  - JSZip (ZIP bundle export)
+
+External Dependencies:
+  - System FFmpeg binary (backend audio extraction)
+  - Google Gemini API key
+  - unpkg.com CDN (ffmpeg.wasm core assets)
+
+4. COMPLETE FEATURE LIST
+------------------------
+4.1 Video Upload
+    - Drag-and-drop or click-to-browse file picker
+    - Accepts .mp4, .mov, .mkv (up to 2 GB)
+    - Client-side validation (extension + size) before upload
+    - Chunked upload (1 MiB chunks) to backend
+    - Immediate error feedback for invalid files
+
+4.2 Configuration Panel
+    - Shorts count: slider, 1-10 clips (default 3)
+    - Duration per short: 15s / 30s / 60s buttons (default 30)
+    - Style/Tone selector: Funny, Educational, Motivational, Highlights,
+      Story-driven, Custom (free-text up to 200 chars)
+    - Subtitle style: TikTok-animated, Bold-centered-white, Minimal-bottom
+
+4.3 Server-Side Pipeline (runs in background)
+    Step 1: Audio Extraction
+      - FFmpeg subprocess: video → 16kHz mono WAV
+      - 600 second timeout
+    Step 2: Transcription
+      - Local Whisper model (tiny/base/small/medium/large)
+      - Word-level timestamps
+      - Runs on CPU via thread executor (non-blocking)
+    Step 3: AI Analysis
+      - Gemini 2.5 Flash with strict Pydantic schema enforcement
+      - Selects best moments based on style/tone
+      - Returns: start_sec, end_sec, title, hook, reason, word timestamps
+      - 3 retry attempts with 2s backoff
+      - 120s per-call timeout
+    Step 4: Cleanup
+      - Deletes input video and audio immediately after analysis
+      - Safety-net cleanup scanner every 300s
+      - Hard delete of workspace after 3600s
+
+4.4 Real-Time Progress (Server-Sent Events)
+    - SSE stream at GET /api/stream/{task_id}
+    - Updates every ~1 second
+    - Steps: Uploading → Extracting Audio → Transcribing → Analyzing Highlights → Done
+    - Stall detection (600s no progress → auto-fail)
+    - Client disconnect detection (cleanup within 5s)
+
+4.5 Browser-Side Rendering (ffmpeg.wasm)
+    - Singleton FFmpeg instance (loaded once per session, 30s timeout)
+    - Source video written to WASM filesystem once, reused for all segments
+    - Per-segment processing:
+      * Center crop to 9:16 aspect ratio
+      * ASS subtitle burn-in (karaoke-style)
+      * Title overlay (drawtext filter)
+      * H.264 encoding (ultrafast preset, CRF 23)
+      * AAC audio (128k)
+      * MP4 with faststart flag
+    - Sequential rendering (one segment at a time)
+    - Real-time progress callbacks
+
+4.6 Subtitle Styles
+    - TikTok-animated: One word at a time, yellow highlight ({\an2\c&H00FFFF&})
+    - Bold-centered-white: 3-4 words per line, font 72, centered
+    - Minimal-bottom: 3-4 words per line, font 48, bottom-aligned
+    - All styles: clip-relative timestamps, clamped to [0, duration]
+    - Invalid words filtered out gracefully
+
+4.7 Results Grid
+    - Responsive: 2 columns (<1024px), 3 columns (≥1024px)
+    - Per-clip card: editable title (amber), hook text, 9:16 video preview, download button
+    - Inline title editing (1-100 chars, sanitized for filesystem)
+    - Individual MP4 download
+    - "Download All as ZIP" (dynamic JSZip import, deduped filenames)
+
+4.8 Privacy & Security
+    - Zero permanent server storage (video + audio deleted after pipeline)
+    - No database, no remote storage, no cloud video processing
+    - CORS locked to http://localhost:3000 only
+    - No YouTube/yt-dlp integration
+    - No paid third-party video APIs
+    - All rendering happens client-side
+
+4.9 UI/UX
+    - Dark theme with CSS variables
+    - Document title: "Shorts Engine Studio"
+    - Cross-origin isolation (COOP + COEP headers for SharedArrayBuffer)
+    - Health check: blocks app if crossOriginIsolated !== true
+    - Error states for every failure mode
+    - Controls disabled during processing/rendering
+
+5. API ENDPOINTS
+----------------
+POST /api/process-video
+  - Multipart: video_file, style_tone, shorts_count, duration_per_short
+  - Returns: {"taskId": "<uuid>"}
+  - Validation: 422 for invalid params, 500 for disk errors
+
+GET /api/stream/{task_id}
+  - SSE stream with JSON payloads
+  - Returns: step, progress, data (on Done), error (on Failed)
+  - 404 for unknown task_id
+
+6. DATA MODELS
+--------------
+WordTimestamp:
+  - word: str (1-100 chars)
+  - start: float (≥0)
+  - end: float (≥0)
+
+ShortSegment:
+  - start_sec: float (≥0)
+  - end_sec: float (>0)
+  - title: str (1-50 chars)
+  - hook: str (1-200 chars, first 5 words)
+  - reason: str (1-500 chars)
+  - words: list[WordTimestamp] (0-1000 items)
+
+ShortsAnalysisResult:
+  - segments: list[ShortSegment] (1-50 items)
+
+7. VALIDATION RULES
+-------------------
+Backend:
+  - shorts_count: integer 1-10
+  - duration_per_short: must be 15, 30, or 60
+  - style_tone: 1-500 chars after trim
+  - video_file: non-empty, required
+  - Segments: no overlap, duration ≤ target, count matches request
+
+Frontend:
+  - File: .mp4/.mov/.mkv only, >0 bytes, ≤2 GB
+  - Custom tone: 1-200 chars after trim
+  - Title edit: 1-100 chars, sanitized (no \/:*?"<>|)
+
+8. ERROR HANDLING
+-----------------
+- FFmpeg not found / non-zero exit / timeout → pipeline fails with cause
+- Whisper model invalid → fallback to "base" with warning
+- Gemini timeout/network error → 3 retries with backoff
+- Gemini parse failure → ValueError with raw response text
+- Post-parse validation failure → ValueError with constraint details
+- Disk write error → HTTP 500, no task registered, partial file cleaned
+- ffmpeg.wasm load timeout → retry allowed on next invocation
+- ffmpeg.wasm render failure → error propagated, subs/output cleaned
+- SSE stall (600s) → auto-fail message sent
+- ZIP build failure → error indicator, blobs retained
+
+9. PROJECT STRUCTURE
+--------------------
+SHORTS-MAKER/
+├── backend/
+│   ├── main.py              (FastAPI app, routes, pipeline, SSE, cleanup)
+│   ├── transcribe.py        (Whisper wrapper)
+│   ├── analyze.py           (Gemini analyzer + Pydantic schemas)
+│   ├── requirements.txt     (7 packages exactly)
+│   ├── .env.example
+│   └── tests/
+│       ├── __init__.py
+│       ├── test_analyze.py
+│       ├── test_analyze_pbt.py
+│       └── test_main_startup.py
+├── frontend/
+│   ├── app/
+│   │   ├── page.tsx         (orchestrator)
+│   │   ├── layout.tsx       (root layout)
+│   │   ├── globals.css      (theme + Tailwind)
+│   │   ├── types.ts         (shared TS types)
+│   │   └── components/
+│   │       ├── DropZone.tsx
+│   │       ├── ConfigPanel.tsx
+│   │       ├── ProgressTracker.tsx
+│   │       ├── ResultsGrid.tsx
+│   │       └── useFFmpegRenderer.ts
+│   ├── next.config.js
+│   ├── package.json
+│   ├── tailwind.config.js
+│   ├── postcss.config.js
+│   └── tsconfig.json
+└── README.md
+
+10. HOW TO RUN
+--------------
+Backend:
+  cd backend
+  python -m venv .venv && .venv\Scripts\activate
+  pip install -r requirements.txt
+  cp .env.example .env  (fill GOOGLE_API_KEY + WHISPER_MODEL_SIZE)
+  uvicorn backend.main:app --port 8000
+
+Frontend:
+  cd frontend
+  npm install
+  npm run dev
+  → http://localhost:3000
+
+No Docker required. Single machine, single user.

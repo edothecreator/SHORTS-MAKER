@@ -344,7 +344,7 @@ export async function renderShort(
 
     // Read the output file.
     const outputData = await ffmpeg.readFile(outFilename);
-    const blob = new Blob([outputData], { type: "video/mp4" });
+    const blob = new Blob([new Uint8Array(outputData as Uint8Array)], { type: "video/mp4" });
 
     // Cleanup: delete output and subs (retain source.mp4).
     await ffmpeg.deleteFile(outFilename);

@@ -1,0 +1,484 @@
+================================================================================
+SHORTS ENGINE STUDIO — PRODUCTION READINESS TASK LIST
+================================================================================
+
+Every task below must be completed for this app to be a real, money-making,
+deployed SaaS product. Tasks are ordered by dependency — later phases depend
+on earlier ones being done.
+
+Status Key: [ ] = Not started | [x] = Done | [~] = In progress
+
+================================================================================
+PHASE 1: FOUNDATION (Must have before ANY user pays)
+================================================================================
+
+1. AUTHENTICATION & USER SYSTEM
+--------------------------------
+[ ] 1.1  Install and configure NextAuth.js (or Clerk) in frontend
+[ ] 1.2  Add Google OAuth provider
+[ ] 1.3  Add GitHub OAuth provider
+[ ] 1.4  Add email/password credentials provider with bcrypt hashing
+[ ] 1.5  Create signup page with email verification flow
+[ ] 1.6  Create login page
+[ ] 1.7  Create password reset flow (forgot password → email link → reset)
+[ ] 1.8  Add session middleware to backend (verify JWT on every request)
+[ ] 1.9  Protect all API endpoints — reject unauthenticated requests with 401
+[ ] 1.10 Create user profile page (name, email, avatar, plan info)
+[ ] 1.11 Add "Sign Out" button to navbar
+[ ] 1.12 Store user records in PostgreSQL (id, email, name, created_at, plan)
+
+2. DATABASE
+-----------
+[ ] 2.1  Set up PostgreSQL (Supabase/Neon free tier or self-hosted)
+[ ] 2.2  Design schema: users, projects, renders, subscriptions, usage_logs
+[ ] 2.3  Create migrations system (Alembic for Python or Prisma for TS)
+[ ] 2.4  Users table: id, email, name, avatar_url, plan, credits_remaining,
+         created_at, updated_at
+[ ] 2.5  Projects table: id, user_id, title, video_filename, config_json,
+         status, created_at, updated_at
+[ ] 2.6  Renders table: id, project_id, segment_index, title, hook,
+         start_sec, end_sec, output_url, thumbnail_url, created_at
+[ ] 2.7  Subscriptions table: id, user_id, stripe_customer_id,
+         stripe_subscription_id, plan, status, current_period_end
+[ ] 2.8  Usage_logs table: id, user_id, action, credits_used, timestamp
+[ ] 2.9  Set up Redis (Upstash free tier or self-hosted) for job queue + caching
+[ ] 2.10 Add connection pooling (PgBouncer or built-in pool)
+[ ] 2.11 Seed database with test data for development
+
+3. CLOUD RENDERING (REPLACE BROWSER ffmpeg.wasm)
+-------------------------------------------------
+[ ] 3.1  Create render worker service (Python process that pulls from job queue)
+[ ] 3.2  Implement job queue (Redis + Bull for Node or Celery for Python)
+[ ] 3.3  Move FFmpeg rendering to server-side (same commands, but on server)
+[ ] 3.4  Add GPU-accelerated encoding option (NVENC) with CPU fallback
+[ ] 3.5  Implement ASS subtitle generation on server (port from TypeScript)
+[ ] 3.6  Upload rendered clips to object storage (S3/R2/GCS)
+[ ] 3.7  Generate thumbnail for each clip (FFmpeg single frame extract)
+[ ] 3.8  Return signed/temporary URLs to frontend for preview + download
+[ ] 3.9  Implement render progress via WebSocket (per-segment updates)
+[ ] 3.10 Add render timeout (5 minutes per segment max)
+[ ] 3.11 Add render retry on failure (max 2 retries)
+[ ] 3.12 Clean up source video from storage after all segments rendered
+[ ] 3.13 Support concurrent renders (multiple workers pulling from queue)
+[ ] 3.14 Add priority queue (paid users render before free users)
+
+4. OBJECT STORAGE
+-----------------
+[ ] 4.1  Set up Cloudflare R2 (or AWS S3) bucket for rendered videos
+[ ] 4.2  Set up separate bucket for uploaded source videos (temporary)
+[ ] 4.3  Implement presigned upload URLs (frontend uploads directly to storage)
+[ ] 4.4  Implement presigned download URLs (time-limited, per-user)
+[ ] 4.5  Set lifecycle rules: delete source videos after 24 hours
+[ ] 4.6  Set lifecycle rules: delete rendered videos after 30 days (free tier)
+         or 90 days (paid tier)
+[ ] 4.7  Implement CDN in front of rendered video bucket
+[ ] 4.8  Add virus/malware scanning on upload (ClamAV or cloud service)
+
+5. PAYMENT & BILLING (STRIPE)
+------------------------------
+[ ] 5.1  Create Stripe account and get API keys
+[ ] 5.2  Define pricing tiers:
+         - Free: 3 videos/month, 720p output, watermark
+         - Pro ($15/mo): 30 videos/month, 1080p, no watermark, priority render
+         - Business ($39/mo): unlimited, 4K, API access, team features
+[ ] 5.3  Create Stripe Products and Prices for each tier
+[ ] 5.4  Implement Stripe Checkout session creation (subscribe flow)
+[ ] 5.5  Implement Stripe Customer Portal (manage subscription, cancel, update card)
+[ ] 5.6  Implement Stripe Webhook handler:
+         - checkout.session.completed → activate subscription
+         - invoice.paid → renew credits
+         - invoice.payment_failed → notify user, grace period
+         - customer.subscription.deleted → downgrade to free
+[ ] 5.7  Credit system: deduct 1 credit per video processed
+[ ] 5.8  Enforce limits: block processing when credits exhausted
+[ ] 5.9  Show "Upgrade" prompt when user hits free tier limit
+[ ] 5.10 Add usage dashboard (credits used this month, history)
+[ ] 5.11 Implement trial period (7 days Pro free, no card required)
+[ ] 5.12 Add annual billing option (20% discount)
+[ ] 5.13 Handle failed payments gracefully (3-day grace, then downgrade)
+
+6. DEPLOYMENT & INFRASTRUCTURE
+-------------------------------
+[ ] 6.1  Create Dockerfile for backend (FastAPI + FFmpeg + Whisper)
+[ ] 6.2  Create Dockerfile for render worker
+[ ] 6.3  Create Dockerfile for frontend (Next.js production build)
+[ ] 6.4  Create docker-compose.yml for local development (all services)
+[ ] 6.5  Set up cloud hosting:
+         - Option A: Railway (simplest, ~$20-50/mo)
+         - Option B: Fly.io (good for workers, ~$20-50/mo)
+         - Option C: AWS ECS (most scalable, ~$50-200/mo)
+[ ] 6.6  Configure environment variables in cloud (secrets management)
+[ ] 6.7  Set up custom domain (buy domain, configure DNS)
+[ ] 6.8  Set up HTTPS (auto-managed SSL via hosting provider)
+[ ] 6.9  Deploy frontend to Vercel (free tier, automatic deploys)
+[ ] 6.10 Set up CI/CD pipeline (GitHub Actions):
+         - Run tests on PR
+         - Build Docker images on merge to main
+         - Auto-deploy to staging
+         - Manual promote to production
+[ ] 6.11 Set up staging environment (separate from production)
+[ ] 6.12 Configure auto-scaling for render workers (scale on queue depth)
+[ ] 6.13 Set up health check endpoints (/health, /ready)
+[ ] 6.14 Configure uptime monitoring (UptimeRobot or Better Uptime, free tier)
+
+7. CORS & SECURITY HARDENING
+-----------------------------
+[ ] 7.1  Update CORS to allow production domain (not just localhost)
+[ ] 7.2  Add rate limiting per user (10 requests/min for uploads)
+[ ] 7.3  Add rate limiting per IP (prevent abuse from unauthenticated)
+[ ] 7.4  Add request size limits (2 GB upload, 1 MB for other endpoints)
+[ ] 7.5  Add input sanitization on all user-provided strings
+[ ] 7.6  Add CSRF protection
+[ ] 7.7  Add security headers (X-Frame-Options, X-Content-Type-Options, etc.)
+[ ] 7.8  Implement API key authentication for programmatic access
+[ ] 7.9  Add brute-force protection on login (lockout after 5 failed attempts)
+[ ] 7.10 Audit all endpoints for authorization (user can only access own data)
+[ ] 7.11 Remove all console.log/print statements with sensitive data
+[ ] 7.12 Add request logging (structured JSON logs, no PII in logs)
+
+================================================================================
+PHASE 2: COMPETITIVE FEATURES (What makes users choose you over OpusClip)
+================================================================================
+
+8. SMART REFRAMING & FACE TRACKING
+------------------------------------
+[ ] 8.1  Integrate MediaPipe Face Detection (runs on server during pipeline)
+[ ] 8.2  Detect primary speaker face position per frame (sample every 0.5s)
+[ ] 8.3  Compute dynamic crop window that follows the speaker
+[ ] 8.4  Smooth crop movement (no jittery jumps between frames)
+[ ] 8.5  Handle multiple speakers: focus on active speaker (audio energy)
+[ ] 8.6  Fallback to center crop when no face detected
+[ ] 8.7  Add user option: "Smart Reframe" vs "Center Crop"
+[ ] 8.8  Support split-screen mode for 2-person podcasts/interviews
+
+9. ADVANCED SUBTITLE ENGINE
+----------------------------
+[ ] 9.1  Design 15-20 subtitle style templates:
+         - Word-by-word highlight (current TikTok style)
+         - Color fill animation (word fills with color as spoken)
+         - Scale pop (word scales up then back)
+         - Bounce effect
+         - Typewriter (letters appear one by one)
+         - Gradient text
+         - Neon glow
+         - Shadow drop
+         - Outline only
+         - Split color (top/bottom different colors)
+         - Emoji auto-insert (based on word sentiment)
+         - Background box styles (rounded, pill, full-width)
+         - Position variants (top, center, bottom)
+         - Multi-line vs single-line
+         - Custom font support
+[ ] 9.2  Build subtitle preview component (shows style before rendering)
+[ ] 9.3  Allow manual subtitle text editing (fix transcription errors)
+[ ] 9.4  Add word-level timing adjustment (drag to shift timing)
+[ ] 9.5  Support custom font upload (TTF/OTF, stored per user)
+[ ] 9.6  Add emoji auto-insertion based on content analysis
+[ ] 9.7  Support RTL languages (Arabic, Hebrew) in subtitle rendering
+
+10. VIRALITY SCORING
+--------------------
+[ ] 10.1 Define scoring heuristics:
+         - Hook strength (first 3 seconds engagement potential)
+         - Pacing (words per minute, pauses, energy changes)
+         - Topic relevance (trending topics boost)
+         - Emotional peaks (sentiment analysis on transcript)
+         - Clip completeness (does it tell a full story?)
+[ ] 10.2 Implement scoring algorithm (weighted combination of heuristics)
+[ ] 10.3 Display score (0-100) on each generated clip card
+[ ] 10.4 Sort clips by virality score (highest first)
+[ ] 10.5 Add explanation tooltip (why this score)
+[ ] 10.6 Track actual performance over time (if user connects social accounts)
+[ ] 10.7 Improve model based on real engagement data (feedback loop)
+
+11. MULTI-LANGUAGE SUPPORT
+---------------------------
+[ ] 11.1 Auto-detect source language from Whisper output
+[ ] 11.2 Add language selector in config panel (override auto-detect)
+[ ] 11.3 Implement subtitle translation (source language → target language)
+         using Google Translate API or DeepL
+[ ] 11.4 Support dual subtitles (original + translation simultaneously)
+[ ] 11.5 Add RTL rendering support for Arabic, Hebrew, Farsi
+[ ] 11.6 Test and validate accuracy for top 10 languages:
+         English, Spanish, Portuguese, French, German, Japanese,
+         Korean, Hindi, Arabic, Chinese
+[ ] 11.7 Localize UI (i18n) for at least English, Spanish, French, Arabic
+
+12. YOUTUBE URL INPUT
+---------------------
+[ ] 12.1 Add URL input field alongside file upload
+[ ] 12.2 Integrate yt-dlp on server for YouTube video download
+[ ] 12.3 Support YouTube, Vimeo, Twitter/X video URLs
+[ ] 12.4 Show download progress in UI
+[ ] 12.5 Validate URL before download (check if video exists, check duration)
+[ ] 12.6 Set max duration limit (60 minutes for free, 180 for paid)
+[ ] 12.7 Handle age-restricted / private video errors gracefully
+[ ] 12.8 Cache downloaded videos for 1 hour (avoid re-download on re-process)
+[ ] 12.9 Add copyright disclaimer / terms acceptance before URL processing
+
+13. PROJECT HISTORY & MANAGEMENT
+---------------------------------
+[ ] 13.1 Save every processing job as a "project" in database
+[ ] 13.2 Project list page (grid view with thumbnails, date, status)
+[ ] 13.3 Re-open completed project (view results, re-download)
+[ ] 13.4 Re-process with different settings (new style, different count)
+[ ] 13.5 Delete project (remove from DB + delete stored videos)
+[ ] 13.6 Search projects by title/date
+[ ] 13.7 Favorite/star projects
+[ ] 13.8 Show storage usage per user (X GB of Y GB used)
+
+14. BETTER OUTPUT OPTIONS
+--------------------------
+[ ] 14.1 Support multiple aspect ratios: 9:16, 1:1, 16:9, 4:5
+[ ] 14.2 Support multiple resolutions: 720p, 1080p, 4K
+[ ] 14.3 Add background music library (royalty-free tracks)
+[ ] 14.4 Auto-add background music (match energy to content)
+[ ] 14.5 Add transition effects between segments (fade, slide, zoom)
+[ ] 14.6 Add intro/outro templates (customizable with brand colors)
+[ ] 14.7 Add watermark option (user uploads logo, positioned in corner)
+[ ] 14.8 Remove watermark for paid users
+[ ] 14.9 Add CTA overlay option (subscribe button, link, etc.)
+
+================================================================================
+PHASE 3: GROWTH & MONETIZATION MULTIPLIERS
+================================================================================
+
+15. MULTI-PLATFORM PUBLISHING
+------------------------------
+[ ] 15.1 Implement OAuth connection to TikTok account
+[ ] 15.2 Implement OAuth connection to YouTube account
+[ ] 15.3 Implement OAuth connection to Instagram (Meta Business API)
+[ ] 15.4 Implement OAuth connection to LinkedIn
+[ ] 15.5 One-click publish to connected platforms
+[ ] 15.6 Schedule posts (pick date/time per platform)
+[ ] 15.7 Optimal time suggestions (based on platform analytics)
+[ ] 15.8 Cross-post to all platforms simultaneously
+[ ] 15.9 Platform-specific formatting (different titles/descriptions per platform)
+[ ] 15.10 Post status tracking (published, failed, scheduled)
+
+16. ANALYTICS DASHBOARD
+------------------------
+[ ] 16.1 Connect to platform APIs to pull engagement data
+[ ] 16.2 Show per-clip metrics: views, likes, comments, shares
+[ ] 16.3 Show aggregate metrics: total views, best performing clips
+[ ] 16.4 Compare performance across platforms
+[ ] 16.5 Show trends over time (weekly/monthly growth)
+[ ] 16.6 Identify best-performing content patterns
+[ ] 16.7 Export analytics as CSV/PDF
+
+17. TEAM & COLLABORATION
+--------------------------
+[ ] 17.1 Create team/workspace system (one team = one billing account)
+[ ] 17.2 Invite team members by email
+[ ] 17.3 Role-based access: Owner, Admin, Editor, Viewer
+[ ] 17.4 Shared project library (team members see all team projects)
+[ ] 17.5 Brand kit: upload logo, set brand colors, default fonts
+[ ] 17.6 Apply brand kit automatically to all renders
+[ ] 17.7 Approval workflow (editor submits → admin approves → publish)
+[ ] 17.8 Activity log (who did what, when)
+[ ] 17.9 Per-seat billing (add $10/mo per additional team member)
+
+18. API ACCESS (FOR DEVELOPERS & AGENCIES)
+-------------------------------------------
+[ ] 18.1 Design REST API (OpenAPI spec):
+         - POST /api/v1/projects (create project, upload video)
+         - GET /api/v1/projects/{id} (get status + results)
+         - POST /api/v1/projects/{id}/render (trigger render)
+         - GET /api/v1/projects/{id}/clips (list rendered clips)
+         - GET /api/v1/usage (check credits remaining)
+[ ] 18.2 API key generation (per user, revocable)
+[ ] 18.3 Rate limiting per API key (based on plan tier)
+[ ] 18.4 Webhook notifications:
+         - project.completed (all clips rendered)
+         - project.failed (pipeline error)
+         - credits.low (10% remaining)
+[ ] 18.5 Batch processing endpoint (submit multiple videos)
+[ ] 18.6 API documentation site (Swagger UI + written guides)
+[ ] 18.7 SDK/client libraries (Python, Node.js)
+[ ] 18.8 Sandbox environment for testing
+
+19. CONTENT SAFETY & MODERATION
+--------------------------------
+[ ] 19.1 Implement upload scanning (detect NSFW content)
+         - Option: Google Cloud Vision SafeSearch
+         - Option: AWS Rekognition Content Moderation
+         - Option: Open-source NSFW classifier
+[ ] 19.2 Block processing of flagged content with clear error message
+[ ] 19.3 Implement DMCA takedown process (form + email workflow)
+[ ] 19.4 Add content reporting mechanism (other users can flag)
+[ ] 19.5 Maintain abuse log for repeat offenders
+[ ] 19.6 Auto-ban after 3 violations
+[ ] 19.7 Add terms acceptance checkbox on signup
+
+20. LEGAL & COMPLIANCE
+-----------------------
+[ ] 20.1 Write Terms of Service (cover: usage rights, content ownership,
+         liability, termination, refunds)
+[ ] 20.2 Write Privacy Policy (cover: data collected, how used, retention,
+         third parties, user rights)
+[ ] 20.3 Implement GDPR compliance:
+         - Data export (user can download all their data)
+         - Data deletion (user can delete account + all data)
+         - Cookie consent banner
+         - Data Processing Agreement template
+[ ] 20.4 Implement CCPA compliance (California users: opt-out of data sale)
+[ ] 20.5 Add cookie consent banner (with accept/reject/customize)
+[ ] 20.6 Create refund policy (e.g., pro-rated refund within 7 days)
+[ ] 20.7 Register business entity (LLC recommended)
+[ ] 20.8 Set up business bank account (separate from personal)
+[ ] 20.9 Get EIN/tax ID for the business
+[ ] 20.10 Set up accounting (track revenue, expenses, taxes)
+
+21. LANDING PAGE & MARKETING
+------------------------------
+[ ] 21.1 Design and build landing page:
+         - Hero section with demo video/GIF
+         - Feature highlights (3-4 key benefits)
+         - How it works (3-step visual)
+         - Pricing table
+         - Testimonials/social proof
+         - FAQ section
+         - CTA buttons throughout
+[ ] 21.2 Build pricing page (compare tiers, feature matrix)
+[ ] 21.3 Build blog (for SEO content marketing)
+[ ] 21.4 Write 5-10 launch blog posts:
+         - "How to turn podcasts into viral shorts"
+         - "Best subtitle styles for TikTok in 2026"
+         - "OpusClip vs [Your App]: honest comparison"
+         - "How to repurpose YouTube videos for Instagram Reels"
+[ ] 21.5 Set up analytics (PostHog or Plausible — privacy-friendly)
+[ ] 21.6 Set up email marketing (Resend or Loops):
+         - Welcome email sequence (3 emails over 7 days)
+         - Usage tips emails
+         - Upgrade prompts when hitting limits
+[ ] 21.7 Create demo video (screen recording of full flow)
+[ ] 21.8 Set up social media accounts (Twitter/X, TikTok, YouTube)
+[ ] 21.9 Create Product Hunt launch page
+
+22. MONITORING, LOGGING & RELIABILITY
+---------------------------------------
+[ ] 22.1 Set up error tracking (Sentry — free tier: 5K events/mo)
+[ ] 22.2 Set up structured logging (JSON format, shipped to central store)
+[ ] 22.3 Set up uptime monitoring with alerting (PagerDuty or email)
+[ ] 22.4 Add performance monitoring (track render times, API latency)
+[ ] 22.5 Set up database backups (daily automated, 30-day retention)
+[ ] 22.6 Create runbook for common incidents:
+         - Render worker crash → auto-restart + retry job
+         - Database connection exhausted → scale pool
+         - Storage full → alert + cleanup old renders
+         - Gemini API down → queue jobs, retry when back
+[ ] 22.7 Implement graceful degradation:
+         - If Gemini down: show "AI analysis temporarily unavailable"
+         - If render worker busy: show queue position
+         - If storage near limit: warn user, block new uploads
+[ ] 22.8 Set up status page (Instatus or Cachet — show system health)
+[ ] 22.9 Implement database connection retry logic
+[ ] 22.10 Add circuit breaker for external API calls (Gemini, Stripe)
+
+23. PERFORMANCE & SCALABILITY
+------------------------------
+[ ] 23.1 Add caching layer:
+         - Cache Whisper model in memory (already done)
+         - Cache user session data in Redis (reduce DB queries)
+         - Cache rendered video URLs (reduce storage API calls)
+[ ] 23.2 Optimize video upload:
+         - Multipart/resumable uploads for large files
+         - Upload directly to object storage (presigned URLs)
+         - Show upload progress with speed estimate
+[ ] 23.3 Optimize rendering:
+         - Use hardware encoding when available (NVENC, VAAPI)
+         - Parallel subtitle generation (while video encodes)
+         - Pre-warm FFmpeg process (avoid cold start per segment)
+[ ] 23.4 Add horizontal scaling:
+         - Multiple render workers (auto-scale on queue depth)
+         - Read replicas for database (if needed at scale)
+         - Load balancer for API servers
+[ ] 23.5 Implement job prioritization:
+         - Paid users → high priority queue
+         - Free users → low priority queue
+         - Retry jobs → separate retry queue
+[ ] 23.6 Add request queuing for burst traffic (don't drop requests)
+[ ] 23.7 Optimize Whisper: use faster-whisper (CTranslate2) for 4x speedup
+
+24. MOBILE & PWA
+-----------------
+[ ] 24.1 Make frontend fully responsive (test on iPhone, Android, tablet)
+[ ] 24.2 Add PWA manifest (installable on home screen)
+[ ] 24.3 Add push notifications:
+         - "Your shorts are ready!" (render complete)
+         - "Your credits reset" (monthly renewal)
+[ ] 24.4 Optimize touch interactions (drag-drop → tap-to-upload on mobile)
+[ ] 24.5 Test and fix all flows on mobile Safari and Chrome Android
+[ ] 24.6 Add offline indicator (show when connection lost)
+
+================================================================================
+PHASE 4: POLISH & LAUNCH
+================================================================================
+
+25. TESTING & QA
+-----------------
+[ ] 25.1 Write end-to-end tests (Playwright):
+         - Full signup → upload → render → download flow
+         - Payment flow (Stripe test mode)
+         - Error states (upload failure, render failure, payment failure)
+[ ] 25.2 Write integration tests for all API endpoints
+[ ] 25.3 Write unit tests for billing logic (credit deduction, limits)
+[ ] 25.4 Load testing (simulate 50 concurrent users)
+[ ] 25.5 Security audit:
+         - SQL injection testing
+         - XSS testing
+         - CSRF testing
+         - Auth bypass testing
+         - File upload vulnerability testing
+[ ] 25.6 Cross-browser testing (Chrome, Firefox, Safari, Edge)
+[ ] 25.7 Mobile testing (iOS Safari, Android Chrome)
+[ ] 25.8 Accessibility audit (WCAG 2.1 AA minimum)
+
+26. FINAL PRE-LAUNCH CHECKLIST
+-------------------------------
+[ ] 26.1 All environment variables documented
+[ ] 26.2 Production database migrated and seeded
+[ ] 26.3 Stripe webhooks configured for production
+[ ] 26.4 DNS propagated, HTTPS working
+[ ] 26.5 Error tracking (Sentry) receiving events
+[ ] 26.6 Uptime monitoring active
+[ ] 26.7 Backup system verified (restore tested)
+[ ] 26.8 Rate limiting tested under load
+[ ] 26.9 Legal pages live (ToS, Privacy Policy)
+[ ] 26.10 Cookie consent working
+[ ] 26.11 Email system tested (welcome, password reset, notifications)
+[ ] 26.12 Payment flow tested end-to-end with real card (small amount)
+[ ] 26.13 Refund flow tested
+[ ] 26.14 Landing page live with analytics tracking
+[ ] 26.15 Social accounts created and linked
+[ ] 26.16 Support email set up (support@yourdomain.com)
+[ ] 26.17 First 5 beta users invited for feedback
+[ ] 26.18 Product Hunt launch scheduled
+[ ] 26.19 Launch blog post written
+[ ] 26.20 All console.log / debug code removed from production build
+
+================================================================================
+SUMMARY
+================================================================================
+
+Total tasks: 226
+Phase 1 (Foundation):        82 tasks  — MUST DO before launch
+Phase 2 (Competitive):       56 tasks  — Do within 1-2 months of launch
+Phase 3 (Growth):            58 tasks  — Do based on user feedback
+Phase 4 (Polish & Launch):   30 tasks  — Final push before going live
+
+Estimated timeline (one developer, full-time):
+  Phase 1: 6-8 weeks
+  Phase 2: 4-6 weeks
+  Phase 3: 6-8 weeks
+  Phase 4: 1-2 weeks
+
+With Kiro (AI-assisted development):
+  Phase 1: 3-4 weeks
+  Phase 2: 2-3 weeks
+  Phase 3: 3-4 weeks
+  Phase 4: 1 week
+
+MINIMUM VIABLE LAUNCH (just Phase 1 + Phase 4): ~4-5 weeks with Kiro
+
+================================================================================
