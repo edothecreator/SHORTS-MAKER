@@ -64,15 +64,15 @@ PHASE 1: FOUNDATION (Must have before ANY user pays)
 
 4. OBJECT STORAGE
 -----------------
-[ ] 4.1  Set up Cloudflare R2 (or AWS S3) bucket for rendered videos
-[ ] 4.2  Set up separate bucket for uploaded source videos (temporary)
-[ ] 4.3  Implement presigned upload URLs (frontend uploads directly to storage)
-[ ] 4.4  Implement presigned download URLs (time-limited, per-user)
-[ ] 4.5  Set lifecycle rules: delete source videos after 24 hours
-[ ] 4.6  Set lifecycle rules: delete rendered videos after 30 days (free tier)
+[x] 4.1  Set up Cloudflare R2 (or AWS S3) bucket for rendered videos
+[x] 4.2  Set up separate bucket for uploaded source videos (temporary)
+[x] 4.3  Implement presigned upload URLs (frontend uploads directly to storage)
+[x] 4.4  Implement presigned download URLs (time-limited, per-user)
+[x] 4.5  Set lifecycle rules: delete source videos after 24 hours
+[x] 4.6  Set lifecycle rules: delete rendered videos after 30 days (free tier)
          or 90 days (paid tier)
-[ ] 4.7  Implement CDN in front of rendered video bucket
-[ ] 4.8  Add virus/malware scanning on upload (ClamAV or cloud service)
+[x] 4.7  Implement CDN in front of rendered video bucket
+[x] 4.8  Add virus/malware scanning on upload (ClamAV or cloud service)
 
 5. PAYMENT & BILLING (STRIPE)
 ------------------------------
