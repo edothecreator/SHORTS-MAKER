@@ -337,7 +337,8 @@ import time
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import BackgroundTasks, File, Form, HTTPException, UploadFile
+from fastapi import BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
+from backend.auth import get_current_user
 
 #: Base directory for per-task Workspace_Directories (Reqs 1.2, 3.1). The
 #: path is intentionally the literal ``/tmp/shorts_workspace`` to match the
@@ -594,6 +595,7 @@ async def process_video(
     style_tone: str = Form(...),
     shorts_count: str = Form(...),
     duration_per_short: str = Form(...),
+    current_user: dict = Depends(get_current_user),
 ) -> dict[str, str]:
     """Accept a video upload and start the processing pipeline.
 
