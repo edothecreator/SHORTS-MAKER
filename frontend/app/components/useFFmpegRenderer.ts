@@ -231,3 +231,180 @@ function groupWords<T>(items: T[], maxPerGroup: number): T[][] {
   }
   return groups;
 }
+
+
+// ---------------------------------------------------------------------------
+// renderShort — cut, crop, subtitle, title overlay a single segment
+// ---------------------------------------------------------------------------
+// Task 11.3 — Requirements: 7.4, 7.5, 7.6, 7.7, 7.8, 7.9, 7.11, 7.12
+
+import { fetchFile } from "@ffmpeg/util";
+import type { ShortSegment } from "../types";
+
+const MAX_SOURCE_SIZE = 2_147_483_648; // 2 GB
+const PROGRESS_STALL_MS = 60_000; // 60s without progress event → error
+
+/**
+ * Render a single short segment: cut, 9:16 crop, ASS subtitles, title overlay.
+ *
+ * On first call of the session, writes the source video to the WASM FS as
+ * "source.mp4" and sets _sourceWritten = true. Subsequent calls reuse it.
+ */
+export async function renderShort(
+  segment: ShortSegment,
+  videoFile: File,
+  index: number,
+  subtitleStyle: SubtitleStyle,
+  onProgress?: (ratio: number) => void
+): Promise<Blob> {
+  // Reject oversized source.
+  if (videoFile.size > MAX_SOURCE_SIZE) {
+    throw new Error("source video too large");
+  }
+
+  const ffmpeg = await initFFmpeg();
+
+  // Write source video to WASM FS on first call only.
+  if (!_sourceWritten) {
+    const data = await fetchFile(videoFile);
+    await ffmpeg.writeFile("source.mp4", data);
+    _sourceWritten = true;
+  }
+
+  // Compute duration.
+  const dur = Math.max(0.001, segment.end_sec - segment.start_sec);
+
+  // Generate ASS subtitles.
+  const assResult = generateAssSubtitles(
+    segment.words,
+    segment.start_sec,
+    dur,
+    subtitleStyle
+  );
+  const subsFilename = "subs.ass";
+  const outFilename = `out_${index}.mp4`;
+
+  await ffmpeg.writeFile(subsFilename, assResult.ass);
+
+  // Escape title for drawtext filter.
+  const escapedTitle = segment.title
+    .replace(/'/g, "\\'")
+    .replace(/:/g, "\\:")
+    .slice(0, 200);
+
+  // Build ffmpeg arguments.
+  const vf = [
+    "crop=ih*(9/16):ih",
+    `subtitles=${subsFilename}`,
+    `drawtext=text='${escapedTitle}':x=(w-text_w)/2:y=80:fontsize=52:fontcolor=white:box=1:boxcolor=black@0.5:boxborderw=12`,
+  ].join(",");
+
+  const args = [
+    "-ss", String(segment.start_sec),
+    "-i", "source.mp4",
+    "-t", String(dur),
+    "-vf", vf,
+    "-c:v", "libx264",
+    "-preset", "ultrafast",
+    "-crf", "23",
+    "-c:a", "aac",
+    "-b:a", "128k",
+    "-movflags", "+faststart",
+    outFilename,
+  ];
+
+  // Wire progress callback with stall detection.
+  let lastProgressTime = Date.now();
+  let progressTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const progressHandler = ({ progress }: { progress: number }) => {
+    lastProgressTime = Date.now();
+    if (onProgress) {
+      onProgress(Math.max(0, Math.min(1, progress)));
+    }
+  };
+
+  ffmpeg.on("progress", progressHandler);
+
+  // Set up stall detection.
+  const stallPromise = new Promise<never>((_, reject) => {
+    progressTimer = setInterval(() => {
+      if (Date.now() - lastProgressTime > PROGRESS_STALL_MS) {
+        reject(new Error(`Render stalled: no progress for ${PROGRESS_STALL_MS / 1000}s`));
+      }
+    }, 5000);
+  });
+
+  try {
+    // Race exec against stall timeout.
+    await Promise.race([
+      ffmpeg.exec(args),
+      stallPromise,
+    ]);
+
+    // Read the output file.
+    const outputData = await ffmpeg.readFile(outFilename);
+    const blob = new Blob([outputData], { type: "video/mp4" });
+
+    // Cleanup: delete output and subs (retain source.mp4).
+    await ffmpeg.deleteFile(outFilename);
+    await ffmpeg.deleteFile(subsFilename);
+
+    return blob;
+  } catch (err) {
+    // Best-effort cleanup even on failure.
+    try { await ffmpeg.deleteFile(subsFilename); } catch {}
+    try { await ffmpeg.deleteFile(outFilename); } catch {}
+    throw err;
+  } finally {
+    ffmpeg.off("progress", progressHandler);
+    if (progressTimer) clearInterval(progressTimer);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// renderAll — sequential driver for all segments
+// ---------------------------------------------------------------------------
+// Task 11.4 — Requirements: 7.10
+
+import type { RenderedClip } from "../types";
+
+/**
+ * Render all segments sequentially. Guarantees at most one ffmpeg.exec
+ * in flight at any instant.
+ *
+ * Calls onIndex(k, n) before each segment and propagates the first error.
+ */
+export async function renderAll(
+  segments: ShortSegment[],
+  videoFile: File,
+  subtitleStyle: SubtitleStyle,
+  onIndex?: (k: number, n: number) => void,
+  onProgress?: (k: number, ratio: number) => void
+): Promise<RenderedClip[]> {
+  const clips: RenderedClip[] = [];
+  const n = segments.length;
+
+  for (let i = 0; i < n; i++) {
+    const k = i + 1;
+    if (onIndex) onIndex(k, n);
+
+    const blob = await renderShort(
+      segments[i],
+      videoFile,
+      i,
+      subtitleStyle,
+      onProgress ? (ratio) => onProgress(k, ratio) : undefined
+    );
+
+    const url = URL.createObjectURL(blob);
+    clips.push({
+      url,
+      title: segments[i].title,
+      hook: segments[i].hook,
+      blob,
+    });
+  }
+
+  return clips;
+}
