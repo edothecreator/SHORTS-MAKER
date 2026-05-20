@@ -11,3 +11,5 @@ bcrypt
 boto3
 websockets
 stripe
+mediapipe
+numpy

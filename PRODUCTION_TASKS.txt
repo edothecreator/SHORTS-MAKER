@@ -142,14 +142,14 @@ PHASE 2: COMPETITIVE FEATURES (What makes users choose you over OpusClip)
 
 8. SMART REFRAMING & FACE TRACKING
 ------------------------------------
-[ ] 8.1  Integrate MediaPipe Face Detection (runs on server during pipeline)
-[ ] 8.2  Detect primary speaker face position per frame (sample every 0.5s)
-[ ] 8.3  Compute dynamic crop window that follows the speaker
-[ ] 8.4  Smooth crop movement (no jittery jumps between frames)
-[ ] 8.5  Handle multiple speakers: focus on active speaker (audio energy)
-[ ] 8.6  Fallback to center crop when no face detected
-[ ] 8.7  Add user option: "Smart Reframe" vs "Center Crop"
-[ ] 8.8  Support split-screen mode for 2-person podcasts/interviews
+[x] 8.1  Integrate MediaPipe Face Detection (runs on server during pipeline)
+[x] 8.2  Detect primary speaker face position per frame (sample every 0.5s)
+[x] 8.3  Compute dynamic crop window that follows the speaker
+[x] 8.4  Smooth crop movement (no jittery jumps between frames)
+[x] 8.5  Handle multiple speakers: focus on active speaker (audio energy)
+[x] 8.6  Fallback to center crop when no face detected
+[x] 8.7  Add user option: "Smart Reframe" vs "Center Crop"
+[x] 8.8  Support split-screen mode for 2-person podcasts/interviews
 
 9. ADVANCED SUBTITLE ENGINE
 ----------------------------
