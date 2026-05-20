@@ -29,21 +29,21 @@ PHASE 1: FOUNDATION (Must have before ANY user pays)
 
 2. DATABASE
 -----------
-[ ] 2.1  Set up PostgreSQL (Supabase/Neon free tier or self-hosted)
-[ ] 2.2  Design schema: users, projects, renders, subscriptions, usage_logs
-[ ] 2.3  Create migrations system (Alembic for Python or Prisma for TS)
-[ ] 2.4  Users table: id, email, name, avatar_url, plan, credits_remaining,
+[x] 2.1  Set up PostgreSQL (Supabase/Neon free tier or self-hosted)
+[x] 2.2  Design schema: users, projects, renders, subscriptions, usage_logs
+[x] 2.3  Create migrations system (Alembic for Python or Prisma for TS)
+[x] 2.4  Users table: id, email, name, avatar_url, plan, credits_remaining,
          created_at, updated_at
-[ ] 2.5  Projects table: id, user_id, title, video_filename, config_json,
+[x] 2.5  Projects table: id, user_id, title, video_filename, config_json,
          status, created_at, updated_at
-[ ] 2.6  Renders table: id, project_id, segment_index, title, hook,
+[x] 2.6  Renders table: id, project_id, segment_index, title, hook,
          start_sec, end_sec, output_url, thumbnail_url, created_at
-[ ] 2.7  Subscriptions table: id, user_id, stripe_customer_id,
+[x] 2.7  Subscriptions table: id, user_id, stripe_customer_id,
          stripe_subscription_id, plan, status, current_period_end
-[ ] 2.8  Usage_logs table: id, user_id, action, credits_used, timestamp
-[ ] 2.9  Set up Redis (Upstash free tier or self-hosted) for job queue + caching
-[ ] 2.10 Add connection pooling (PgBouncer or built-in pool)
-[ ] 2.11 Seed database with test data for development
+[x] 2.8  Usage_logs table: id, user_id, action, credits_used, timestamp
+[x] 2.9  Set up Redis (Upstash free tier or self-hosted) for job queue + caching
+[x] 2.10 Add connection pooling (PgBouncer or built-in pool)
+[x] 2.11 Seed database with test data for development
 
 3. CLOUD RENDERING (REPLACE BROWSER ffmpeg.wasm)
 -------------------------------------------------
