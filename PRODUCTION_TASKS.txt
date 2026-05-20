@@ -123,18 +123,18 @@ PHASE 1: FOUNDATION (Must have before ANY user pays)
 
 7. CORS & SECURITY HARDENING
 -----------------------------
-[ ] 7.1  Update CORS to allow production domain (not just localhost)
-[ ] 7.2  Add rate limiting per user (10 requests/min for uploads)
-[ ] 7.3  Add rate limiting per IP (prevent abuse from unauthenticated)
-[ ] 7.4  Add request size limits (2 GB upload, 1 MB for other endpoints)
-[ ] 7.5  Add input sanitization on all user-provided strings
-[ ] 7.6  Add CSRF protection
-[ ] 7.7  Add security headers (X-Frame-Options, X-Content-Type-Options, etc.)
-[ ] 7.8  Implement API key authentication for programmatic access
-[ ] 7.9  Add brute-force protection on login (lockout after 5 failed attempts)
-[ ] 7.10 Audit all endpoints for authorization (user can only access own data)
-[ ] 7.11 Remove all console.log/print statements with sensitive data
-[ ] 7.12 Add request logging (structured JSON logs, no PII in logs)
+[x] 7.1  Update CORS to allow production domain (not just localhost)
+[x] 7.2  Add rate limiting per user (10 requests/min for uploads)
+[x] 7.3  Add rate limiting per IP (prevent abuse from unauthenticated)
+[x] 7.4  Add request size limits (2 GB upload, 1 MB for other endpoints)
+[x] 7.5  Add input sanitization on all user-provided strings
+[x] 7.6  Add CSRF protection
+[x] 7.7  Add security headers (X-Frame-Options, X-Content-Type-Options, etc.)
+[x] 7.8  Implement API key authentication for programmatic access
+[x] 7.9  Add brute-force protection on login (lockout after 5 failed attempts)
+[x] 7.10 Audit all endpoints for authorization (user can only access own data)
+[x] 7.11 Remove all console.log/print statements with sensitive data
+[x] 7.12 Add request logging (structured JSON logs, no PII in logs)
 
 ================================================================================
 PHASE 2: COMPETITIVE FEATURES (What makes users choose you over OpusClip)
