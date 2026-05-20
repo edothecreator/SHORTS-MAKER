@@ -331,7 +331,7 @@ PHASE 3: GROWTH & MONETIZATION MULTIPLIERS
 
 21. LANDING PAGE & MARKETING
 ------------------------------
-[ ] 21.1 Design and build landing page:
+[x] 21.1 Design and build landing page:
          - Hero section with demo video/GIF
          - Feature highlights (3-4 key benefits)
          - How it works (3-step visual)
@@ -339,21 +339,21 @@ PHASE 3: GROWTH & MONETIZATION MULTIPLIERS
          - Testimonials/social proof
          - FAQ section
          - CTA buttons throughout
-[ ] 21.2 Build pricing page (compare tiers, feature matrix)
-[ ] 21.3 Build blog (for SEO content marketing)
-[ ] 21.4 Write 5-10 launch blog posts:
+[x] 21.2 Build pricing page (compare tiers, feature matrix)
+[x] 21.3 Build blog (for SEO content marketing)
+[x] 21.4 Write 5-10 launch blog posts:
          - "How to turn podcasts into viral shorts"
          - "Best subtitle styles for TikTok in 2026"
          - "OpusClip vs [Your App]: honest comparison"
          - "How to repurpose YouTube videos for Instagram Reels"
-[ ] 21.5 Set up analytics (PostHog or Plausible — privacy-friendly)
-[ ] 21.6 Set up email marketing (Resend or Loops):
+[x] 21.5 Set up analytics (PostHog or Plausible — privacy-friendly)
+[x] 21.6 Set up email marketing (Resend or Loops):
          - Welcome email sequence (3 emails over 7 days)
          - Usage tips emails
          - Upgrade prompts when hitting limits
-[ ] 21.7 Create demo video (screen recording of full flow)
-[ ] 21.8 Set up social media accounts (Twitter/X, TikTok, YouTube)
-[ ] 21.9 Create Product Hunt launch page
+[x] 21.7 Create demo video (screen recording of full flow)
+[x] 21.8 Set up social media accounts (Twitter/X, TikTok, YouTube)
+[x] 21.9 Create Product Hunt launch page
 
 22. MONITORING, LOGGING & RELIABILITY
 ---------------------------------------
