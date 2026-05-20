@@ -119,7 +119,7 @@ The implementation order is: scaffold the repository, build the backend pipeline
     - Stop emitting and release resources within 5 seconds of client disconnect
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8_
 
-  - [ ] 4.7 Implement `cleanup_task_directory` and `_cleanup_scanner` in `backend/main.py`
+  - [x] 4.7 Implement `cleanup_task_directory` and `_cleanup_scanner` in `backend/main.py`
     - `cleanup_task_directory(task_id, delay)`: `await asyncio.sleep(delay)` then `shutil.rmtree(workspace, ignore_errors=True)`
     - `_cleanup_scanner()`: launched at startup; loop forever sleeping 300 s and removing any subdirectory of `/tmp/shorts_workspace/` older than 3600 s
     - _Requirements: 3.3, 3.4, 3.5, 3.7_

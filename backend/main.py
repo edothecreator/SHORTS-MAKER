@@ -231,16 +231,38 @@ task_registry: dict[str, dict] = {}
 
 
 async def _cleanup_scanner() -> None:
-    """Background scanner that purges stale Workspace_Directories.
+    """Background scanner that purges stale Workspace_Directories (Req 3.7).
 
-    The full implementation lands in task 4.7 — it will loop forever, sleeping
-    300 seconds between scans and removing any subdirectory of
-    ``/tmp/shorts_workspace/`` whose creation time is older than 3600 seconds
-    (Requirement 3.7). Until then this is a no-op coroutine so the lifespan
-    startup hook can schedule it without raising.
+    Runs forever once launched by the lifespan startup hook. Every 300 seconds
+    it scans :data:`WORKSPACE_ROOT` and removes any subdirectory whose
+    creation time (``st_ctime``) is older than 3600 seconds. Errors on
+    individual directories are logged and swallowed so the scanner continues
+    with the next entry.
     """
-    # Placeholder body. Task 4.7 will replace this with the real scan loop.
-    return None
+    import shutil
+
+    scan_interval = 300  # seconds between scans
+    max_age = 3600  # seconds before a workspace is considered stale
+
+    while True:
+        await asyncio.sleep(scan_interval)
+        try:
+            if not WORKSPACE_ROOT.exists():
+                continue
+            now = time.time()
+            for entry in WORKSPACE_ROOT.iterdir():
+                if not entry.is_dir():
+                    continue
+                try:
+                    age = now - entry.stat().st_ctime
+                    if age > max_age:
+                        shutil.rmtree(entry, ignore_errors=True)
+                except OSError as exc:
+                    logger.warning(
+                        "Cleanup scanner: failed to process %s: %s", entry, exc
+                    )
+        except OSError as exc:
+            logger.warning("Cleanup scanner: scan failed: %s", exc)
 
 
 @asynccontextmanager
@@ -451,10 +473,16 @@ async def run_processing_pipeline(task_id: str) -> None:
 async def cleanup_task_directory(task_id: str, delay: int = 3600) -> None:
     """Remove the Workspace_Directory for *task_id* after *delay* seconds.
 
-    Forward stub. Body filled in by task 4.7.
+    Sleeps for *delay* seconds then removes the entire workspace directory
+    tree via ``shutil.rmtree(..., ignore_errors=True)`` (Req 3.3, 3.4, 3.5).
+    If the directory no longer exists (already cleaned by the scanner or by
+    ``_safe_delete``), ``rmtree`` is a no-op because ``ignore_errors=True``.
     """
-    # Body filled in by task 4.7.
-    return None
+    import shutil
+
+    await asyncio.sleep(delay)
+    workspace = WORKSPACE_ROOT / task_id
+    shutil.rmtree(workspace, ignore_errors=True)
 
 
 # ---------------------------------------------------------------------------
