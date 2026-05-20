@@ -10,3 +10,4 @@ redis
 bcrypt
 boto3
 websockets
+stripe
