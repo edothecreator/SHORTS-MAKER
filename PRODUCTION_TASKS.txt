@@ -178,18 +178,18 @@ PHASE 2: COMPETITIVE FEATURES (What makes users choose you over OpusClip)
 
 10. VIRALITY SCORING
 --------------------
-[ ] 10.1 Define scoring heuristics:
+[x] 10.1 Define scoring heuristics:
          - Hook strength (first 3 seconds engagement potential)
          - Pacing (words per minute, pauses, energy changes)
          - Topic relevance (trending topics boost)
          - Emotional peaks (sentiment analysis on transcript)
          - Clip completeness (does it tell a full story?)
-[ ] 10.2 Implement scoring algorithm (weighted combination of heuristics)
-[ ] 10.3 Display score (0-100) on each generated clip card
-[ ] 10.4 Sort clips by virality score (highest first)
-[ ] 10.5 Add explanation tooltip (why this score)
-[ ] 10.6 Track actual performance over time (if user connects social accounts)
-[ ] 10.7 Improve model based on real engagement data (feedback loop)
+[x] 10.2 Implement scoring algorithm (weighted combination of heuristics)
+[x] 10.3 Display score (0-100) on each generated clip card
+[x] 10.4 Sort clips by virality score (highest first)
+[x] 10.5 Add explanation tooltip (why this score)
+[x] 10.6 Track actual performance over time (if user connects social accounts)
+[x] 10.7 Improve model based on real engagement data (feedback loop)
 
 11. MULTI-LANGUAGE SUPPORT
 ---------------------------
