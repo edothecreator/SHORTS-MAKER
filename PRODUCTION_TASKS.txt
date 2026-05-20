@@ -299,16 +299,16 @@ PHASE 3: GROWTH & MONETIZATION MULTIPLIERS
 
 19. CONTENT SAFETY & MODERATION
 --------------------------------
-[ ] 19.1 Implement upload scanning (detect NSFW content)
+[x] 19.1 Implement upload scanning (detect NSFW content)
          - Option: Google Cloud Vision SafeSearch
          - Option: AWS Rekognition Content Moderation
          - Option: Open-source NSFW classifier
-[ ] 19.2 Block processing of flagged content with clear error message
-[ ] 19.3 Implement DMCA takedown process (form + email workflow)
-[ ] 19.4 Add content reporting mechanism (other users can flag)
-[ ] 19.5 Maintain abuse log for repeat offenders
-[ ] 19.6 Auto-ban after 3 violations
-[ ] 19.7 Add terms acceptance checkbox on signup
+[x] 19.2 Block processing of flagged content with clear error message
+[x] 19.3 Implement DMCA takedown process (form + email workflow)
+[x] 19.4 Add content reporting mechanism (other users can flag)
+[x] 19.5 Maintain abuse log for repeat offenders
+[x] 19.6 Auto-ban after 3 violations
+[x] 19.7 Add terms acceptance checkbox on signup
 
 20. LEGAL & COMPLIANCE
 -----------------------
