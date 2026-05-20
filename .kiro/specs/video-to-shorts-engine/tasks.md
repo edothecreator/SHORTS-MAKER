@@ -97,7 +97,7 @@ The implementation order is: scaffold the repository, build the backend pipeline
     - Convert non-zero rc, `TimeoutError`, and `FileNotFoundError` into a `RuntimeError("Audio extraction failed: ...")` with the underlying cause
     - _Requirements: 2.2, 2.3_
 
-  - [ ] 4.4 Implement `run_processing_pipeline` in `backend/main.py`
+  - [x] 4.4 Implement `run_processing_pipeline` in `backend/main.py`
     - Set `step="Extracting Audio"`, `progress=25`; await `_extract_audio`
     - Set `step="Transcribing"`, `progress=60`; await `run_whisper_transcription` with the resolved Whisper model size
     - Set `step="Analyzing Highlights"`, `progress=75`; await `analyze_video_transcript` with stashed form fields
@@ -105,7 +105,7 @@ The implementation order is: scaffold the repository, build the backend pipeline
     - Wrap pipeline in `try/except/finally`: on exception, set `step="Failed"` with `error=str(e)`; in `finally`, await `_safe_delete(input_path)` and `_safe_delete(audio_path)`
     - _Requirements: 2.1, 2.4, 2.8, 2.13, 2.14, 3.1, 3.2_
 
-  - [ ] 4.5 Implement `_safe_delete` helper in `backend/main.py`
+  - [x] 4.5 Implement `_safe_delete` helper in `backend/main.py`
     - Try `path.unlink(missing_ok=True)` up to 3 times with 1 second between attempts on `OSError`
     - On final failure, set `cleanup_warning` field on the registry entry without changing `step`
     - _Requirements: 3.6_

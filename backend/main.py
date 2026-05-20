@@ -346,13 +346,106 @@ UPLOAD_CHUNK_SIZE: int = 1024 * 1024  # 1 MiB
 # naming its implementing task.
 
 
+async def _safe_delete(task_id: str, path: Path) -> None:
+    """Best-effort file deletion with retries (Requirement 3.6).
+
+    Attempts ``path.unlink(missing_ok=True)`` up to 3 times with 1 second
+    between attempts on ``OSError``. On final failure, records a
+    ``cleanup_warning`` on the Task_Registry entry without changing ``step``
+    so the SSE consumer can surface a non-fatal notice.
+    """
+    max_attempts = 3
+    for attempt in range(max_attempts):
+        try:
+            path.unlink(missing_ok=True)
+            return
+        except OSError:
+            if attempt < max_attempts - 1:
+                await asyncio.sleep(1)
+
+    # Final failure: record a warning without changing step.
+    entry = task_registry.get(task_id)
+    if entry is not None:
+        existing = entry.get("cleanup_warning") or ""
+        entry["cleanup_warning"] = (
+            f"{existing}; Failed to delete {path.name}" if existing
+            else f"Failed to delete {path.name}"
+        )
+
+
 async def run_processing_pipeline(task_id: str) -> None:
     """Run the audio-extraction → transcription → analysis pipeline.
 
-    Forward stub. Body filled in by task 4.4.
+    Orchestrates the three sequential processing stages:
+
+      1. **Extracting Audio** — calls :func:`_extract_audio` to produce a
+         16 kHz mono PCM WAV via the system ``ffmpeg`` binary.
+      2. **Transcribing** — calls :func:`transcribe.run_whisper_transcription`
+         with the resolved Whisper model size.
+      3. **Analyzing Highlights** — calls
+         :func:`analyze.analyze_video_transcript` with the stashed form fields.
+
+    On success the registry entry transitions to ``step="Done"`` /
+    ``progress=100`` with ``data`` holding the ``ShortsAnalysisResult`` dict.
+
+    On any exception the registry entry transitions to ``step="Failed"`` with
+    an ``error`` field containing the stringified exception (Reqs 2.3, 2.13).
+
+    In all cases (success or failure), the input video and extracted audio WAV
+    are deleted via :func:`_safe_delete` so the workspace directory contains
+    only the (empty) folder skeleton for the cleanup scanner (Reqs 3.1, 3.2).
     """
-    # Body filled in by task 4.4.
-    return None
+    from backend.transcribe import run_whisper_transcription
+    from backend.analyze import analyze_video_transcript
+
+    entry = task_registry[task_id]
+    workspace = Path(entry["_workspace"])
+    input_path = Path(entry["_input_path"])
+    audio_path = workspace / "audio.wav"
+
+    try:
+        # ---- Stage 1: Extract Audio (Req 2.1, progress=25) ----
+        entry["step"] = "Extracting Audio"
+        entry["progress"] = 25
+
+        await _extract_audio(input_path, audio_path)
+
+        # ---- Stage 2: Transcribe (Req 2.4, progress=60) ----
+        entry["step"] = "Transcribing"
+        entry["progress"] = 60
+
+        transcript = await run_whisper_transcription(
+            str(audio_path), model_size=WHISPER_MODEL_SIZE
+        )
+
+        # ---- Stage 3: Analyze Highlights (Req 2.8, progress=75) ----
+        entry["step"] = "Analyzing Highlights"
+        entry["progress"] = 75
+
+        result = await analyze_video_transcript(
+            transcript=transcript,
+            style_tone=entry["_style_tone"],
+            max_count=entry["_shorts_count"],
+            target_duration=entry["_duration_per_short"],
+        )
+
+        # ---- Done (Req 2.13, progress=100) ----
+        entry["step"] = "Done"
+        entry["progress"] = 100
+        entry["data"] = result.model_dump()
+
+    except Exception as exc:
+        # Req 2.3 / 2.14: terminate pipeline and surface the error.
+        entry["step"] = "Failed"
+        entry["error"] = str(exc)
+
+    finally:
+        # Req 3.1, 3.2: delete input video and audio WAV regardless of
+        # outcome. _safe_delete retries up to 3 times with 1 s between
+        # attempts and records a warning on final failure rather than
+        # raising.
+        await _safe_delete(task_id, input_path)
+        await _safe_delete(task_id, audio_path)
 
 
 async def cleanup_task_directory(task_id: str, delay: int = 3600) -> None:
