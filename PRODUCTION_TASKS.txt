@@ -193,16 +193,16 @@ PHASE 2: COMPETITIVE FEATURES (What makes users choose you over OpusClip)
 
 11. MULTI-LANGUAGE SUPPORT
 ---------------------------
-[ ] 11.1 Auto-detect source language from Whisper output
-[ ] 11.2 Add language selector in config panel (override auto-detect)
-[ ] 11.3 Implement subtitle translation (source language → target language)
+[x] 11.1 Auto-detect source language from Whisper output
+[x] 11.2 Add language selector in config panel (override auto-detect)
+[x] 11.3 Implement subtitle translation (source language → target language)
          using Google Translate API or DeepL
-[ ] 11.4 Support dual subtitles (original + translation simultaneously)
-[ ] 11.5 Add RTL rendering support for Arabic, Hebrew, Farsi
-[ ] 11.6 Test and validate accuracy for top 10 languages:
+[x] 11.4 Support dual subtitles (original + translation simultaneously)
+[x] 11.5 Add RTL rendering support for Arabic, Hebrew, Farsi
+[x] 11.6 Test and validate accuracy for top 10 languages:
          English, Spanish, Portuguese, French, German, Japanese,
          Korean, Hindi, Arabic, Chinese
-[ ] 11.7 Localize UI (i18n) for at least English, Spanish, French, Arabic
+[x] 11.7 Localize UI (i18n) for at least English, Spanish, French, Arabic
 
 12. YOUTUBE URL INPUT
 ---------------------
