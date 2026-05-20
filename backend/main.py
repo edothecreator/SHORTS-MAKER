@@ -806,3 +806,142 @@ async def _extract_audio(input_path: Path, audio_path: Path) -> None:
             f"Audio extraction failed: ffmpeg exited with rc={proc.returncode}: "
             f"{tail}"
         )
+
+
+# ---------------------------------------------------------------------------
+# SSE streaming endpoint: GET /api/stream/{task_id}
+# ---------------------------------------------------------------------------
+#
+# Added by task 4.6. Streams pipeline progress to the Frontend via
+# Server-Sent Events (SSE). The consumer is the ``EventSource`` opened by
+# the orchestrator page immediately after receiving the ``taskId`` from the
+# upload response.
+#
+# Contract (Requirements 4.1 through 4.8):
+#
+# * Returns HTTP 404 when ``task_id`` is not in ``task_registry``.
+# * Returns ``StreamingResponse(media_type="text/event-stream")`` with
+#   ``Cache-Control: no-cache`` and ``Connection: keep-alive`` headers.
+# * Emits an initial snapshot within 1 second of connection.
+# * Emits subsequent messages on a 1 s ± 200 ms cadence.
+# * Tracks ``last_step_change``; emits a final stall message and closes
+#   after 600 s of no ``step`` advance.
+# * On ``step ∈ {"Done", "Failed"}``, emits a final message and closes
+#   within 1 additional second.
+# * Stops emitting and releases resources within 5 seconds of client
+#   disconnect (detected via ``asyncio.CancelledError`` when the client
+#   drops the TCP connection and Starlette cancels the generator).
+
+import json as _json
+
+from fastapi import Request
+from fastapi.responses import StreamingResponse
+
+#: Terminal steps that signal the end of the SSE stream (Req 4.5).
+_TERMINAL_STEPS: frozenset[str] = frozenset({"Done", "Failed"})
+
+#: Maximum time (seconds) without a ``step`` change before the stream is
+#: considered stalled and closed with a stall notice (Req 4.7).
+_STALL_TIMEOUT_SEC: float = 600.0
+
+#: Polling cadence for the SSE loop, in seconds (Req 4.3).
+_SSE_POLL_INTERVAL_SEC: float = 1.0
+
+
+def _sse_event(data: dict) -> str:
+    """Format a dict as a single SSE ``data:`` frame terminated by ``\\n\\n``."""
+    payload = _json.dumps(data, separators=(",", ":"))
+    return f"data: {payload}\n\n"
+
+
+async def _stream_generator(task_id: str, request: Request):
+    """Async generator that yields SSE frames until terminal or stall."""
+    entry = task_registry.get(task_id)
+    if entry is None:
+        # Should not happen because the route checks before creating the
+        # StreamingResponse, but guard defensively.
+        return
+
+    last_step = entry["step"]
+    last_step_change = time.time()
+
+    # Emit initial snapshot immediately (Req 4.2).
+    yield _sse_event({
+        "step": entry["step"],
+        "progress": entry["progress"],
+        "data": entry.get("data"),
+        "error": entry.get("error"),
+        "warning": entry.get("warning"),
+        "cleanup_warning": entry.get("cleanup_warning"),
+    })
+
+    # If already terminal at connect time, close within 1 s (Req 4.5).
+    if entry["step"] in _TERMINAL_STEPS:
+        return
+
+    while True:
+        # Respect client disconnect (Req 4.8). Starlette raises
+        # CancelledError on the generator when the client drops;
+        # alternatively we can poll `request.is_disconnected()`.
+        if await request.is_disconnected():
+            return
+
+        await asyncio.sleep(_SSE_POLL_INTERVAL_SEC)
+
+        current_step = entry["step"]
+
+        # Detect step change and reset stall timer.
+        if current_step != last_step:
+            last_step = current_step
+            last_step_change = time.time()
+
+        # Emit current state.
+        yield _sse_event({
+            "step": entry["step"],
+            "progress": entry["progress"],
+            "data": entry.get("data"),
+            "error": entry.get("error"),
+            "warning": entry.get("warning"),
+            "cleanup_warning": entry.get("cleanup_warning"),
+        })
+
+        # Terminal: emit final frame and close (Req 4.5).
+        if current_step in _TERMINAL_STEPS:
+            return
+
+        # Stall detection (Req 4.7): close after 600 s of no step change.
+        elapsed = time.time() - last_step_change
+        if elapsed >= _STALL_TIMEOUT_SEC:
+            yield _sse_event({
+                "step": entry["step"],
+                "progress": entry["progress"],
+                "error": (
+                    f"Pipeline stalled: no progress for "
+                    f"{_STALL_TIMEOUT_SEC:.0f}s"
+                ),
+                "warning": entry.get("warning"),
+                "cleanup_warning": entry.get("cleanup_warning"),
+            })
+            return
+
+
+@app.get("/api/stream/{task_id}")
+async def stream_task(task_id: str, request: Request):
+    """Stream pipeline progress for *task_id* via SSE.
+
+    Returns HTTP 404 when ``task_id`` is not in ``task_registry``.
+    Otherwise returns a ``StreamingResponse`` with ``text/event-stream``
+    content type and the appropriate cache/connection headers
+    (Requirements 4.1 through 4.8).
+    """
+    if task_id not in task_registry:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    return StreamingResponse(
+        _stream_generator(task_id, request),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )

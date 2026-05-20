@@ -110,7 +110,7 @@ The implementation order is: scaffold the repository, build the backend pipeline
     - On final failure, set `cleanup_warning` field on the registry entry without changing `step`
     - _Requirements: 3.6_
 
-  - [ ] 4.6 Implement `GET /api/stream/{task_id}` SSE endpoint in `backend/main.py`
+  - [x] 4.6 Implement `GET /api/stream/{task_id}` SSE endpoint in `backend/main.py`
     - Return HTTP 404 when `task_id` not in `task_registry`
     - Return `StreamingResponse(media_type="text/event-stream")` with `Cache-Control: no-cache`, `Connection: keep-alive`
     - Emit initial snapshot within 1 second; emit subsequent messages on a 1 s ± 200 ms cadence
