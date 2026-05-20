@@ -14,18 +14,18 @@ PHASE 1: FOUNDATION (Must have before ANY user pays)
 
 1. AUTHENTICATION & USER SYSTEM
 --------------------------------
-[ ] 1.1  Install and configure NextAuth.js (or Clerk) in frontend
-[ ] 1.2  Add Google OAuth provider
-[ ] 1.3  Add GitHub OAuth provider
-[ ] 1.4  Add email/password credentials provider with bcrypt hashing
-[ ] 1.5  Create signup page with email verification flow
-[ ] 1.6  Create login page
-[ ] 1.7  Create password reset flow (forgot password → email link → reset)
-[ ] 1.8  Add session middleware to backend (verify JWT on every request)
-[ ] 1.9  Protect all API endpoints — reject unauthenticated requests with 401
-[ ] 1.10 Create user profile page (name, email, avatar, plan info)
-[ ] 1.11 Add "Sign Out" button to navbar
-[ ] 1.12 Store user records in PostgreSQL (id, email, name, created_at, plan)
+[x] 1.1  Install and configure NextAuth.js (or Clerk) in frontend
+[x] 1.2  Add Google OAuth provider
+[x] 1.3  Add GitHub OAuth provider
+[x] 1.4  Add email/password credentials provider with bcrypt hashing
+[x] 1.5  Create signup page with email verification flow
+[x] 1.6  Create login page
+[x] 1.7  Create password reset flow (forgot password → email link → reset)
+[x] 1.8  Add session middleware to backend (verify JWT on every request)
+[x] 1.9  Protect all API endpoints — reject unauthenticated requests with 401
+[x] 1.10 Create user profile page (name, email, avatar, plan info)
+[x] 1.11 Add "Sign Out" button to navbar
+[x] 1.12 Store user records in PostgreSQL (id, email, name, created_at, plan)
 
 2. DATABASE
 -----------
