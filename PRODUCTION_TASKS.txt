@@ -402,14 +402,14 @@ PHASE 3: GROWTH & MONETIZATION MULTIPLIERS
 
 24. MOBILE & PWA
 -----------------
-[ ] 24.1 Make frontend fully responsive (test on iPhone, Android, tablet)
-[ ] 24.2 Add PWA manifest (installable on home screen)
-[ ] 24.3 Add push notifications:
+[x] 24.1 Make frontend fully responsive (test on iPhone, Android, tablet)
+[x] 24.2 Add PWA manifest (installable on home screen)
+[x] 24.3 Add push notifications:
          - "Your shorts are ready!" (render complete)
          - "Your credits reset" (monthly renewal)
-[ ] 24.4 Optimize touch interactions (drag-drop → tap-to-upload on mobile)
-[ ] 24.5 Test and fix all flows on mobile Safari and Chrome Android
-[ ] 24.6 Add offline indicator (show when connection lost)
+[x] 24.4 Optimize touch interactions (drag-drop → tap-to-upload on mobile)
+[x] 24.5 Test and fix all flows on mobile Safari and Chrome Android
+[x] 24.6 Add offline indicator (show when connection lost)
 
 ================================================================================
 PHASE 4: POLISH & LAUNCH
