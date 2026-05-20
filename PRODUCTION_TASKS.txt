@@ -153,7 +153,7 @@ PHASE 2: COMPETITIVE FEATURES (What makes users choose you over OpusClip)
 
 9. ADVANCED SUBTITLE ENGINE
 ----------------------------
-[ ] 9.1  Design 15-20 subtitle style templates:
+[x] 9.1  Design 15-20 subtitle style templates:
          - Word-by-word highlight (current TikTok style)
          - Color fill animation (word fills with color as spoken)
          - Scale pop (word scales up then back)
@@ -169,12 +169,12 @@ PHASE 2: COMPETITIVE FEATURES (What makes users choose you over OpusClip)
          - Position variants (top, center, bottom)
          - Multi-line vs single-line
          - Custom font support
-[ ] 9.2  Build subtitle preview component (shows style before rendering)
-[ ] 9.3  Allow manual subtitle text editing (fix transcription errors)
-[ ] 9.4  Add word-level timing adjustment (drag to shift timing)
-[ ] 9.5  Support custom font upload (TTF/OTF, stored per user)
-[ ] 9.6  Add emoji auto-insertion based on content analysis
-[ ] 9.7  Support RTL languages (Arabic, Hebrew) in subtitle rendering
+[x] 9.2  Build subtitle preview component (shows style before rendering)
+[x] 9.3  Allow manual subtitle text editing (fix transcription errors)
+[x] 9.4  Add word-level timing adjustment (drag to shift timing)
+[x] 9.5  Support custom font upload (TTF/OTF, stored per user)
+[x] 9.6  Add emoji auto-insertion based on content analysis
+[x] 9.7  Support RTL languages (Arabic, Hebrew) in subtitle rendering
 
 10. VIRALITY SCORING
 --------------------
