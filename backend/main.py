@@ -1,0 +1,576 @@
+"""Video-to-Shorts Engine FastAPI backend (incremental scaffold).
+
+This module is built up across several tasks. At the current stage it implements:
+
+* Loading configuration from a local ``.env`` file via ``python-dotenv`` at module
+  import time (Requirement 12.6).
+* Validating that ``GOOGLE_API_KEY`` and ``WHISPER_MODEL_SIZE`` are non-empty
+  strings, aborting startup with a descriptive error otherwise
+  (Requirement 12.13).
+* Resolving the effective Whisper model size, falling back to ``"base"`` with a
+  recorded warning when the configured value is not in the allowed set
+  (Requirement 2.6).
+
+The FastAPI application object, route handlers, processing pipeline, SSE stream,
+and cleanup helpers are added by later tasks (4.x). This file intentionally does
+not yet construct ``app = FastAPI()``.
+"""
+from __future__ import annotations
+
+import logging
+import os
+from typing import Mapping, Optional
+
+from dotenv import load_dotenv
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+#: Whisper model sizes accepted by ``openai-whisper`` per Requirement 2.5.
+ALLOWED_WHISPER_MODEL_SIZES: frozenset[str] = frozenset(
+    {"tiny", "base", "small", "medium", "large"}
+)
+
+#: Fallback model size used when ``WHISPER_MODEL_SIZE`` is not in the allowed set
+#: (Requirement 2.6).
+DEFAULT_WHISPER_MODEL_SIZE: str = "base"
+
+#: Required environment keys per Requirement 12.6 / 12.13.
+_REQUIRED_ENV_KEYS: tuple[str, ...] = ("GOOGLE_API_KEY", "WHISPER_MODEL_SIZE")
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Errors
+# ---------------------------------------------------------------------------
+
+
+class StartupConfigError(RuntimeError):
+    """Raised when required startup configuration is missing or empty.
+
+    Requirement 12.13 mandates aborting startup within 5 seconds and emitting an
+    error that identifies which environment key is missing or empty. The
+    exception message always names the offending key.
+    """
+
+
+# ---------------------------------------------------------------------------
+# Pure helpers (testable without touching ``os.environ`` directly)
+# ---------------------------------------------------------------------------
+
+
+def _read_required_env(name: str, environ: Mapping[str, str]) -> str:
+    """Return the trimmed value of *name* or raise :class:`StartupConfigError`.
+
+    A value is considered empty if it is missing, ``None``, or contains only
+    whitespace. The raised error always names the offending key so the operator
+    can fix it (Requirement 12.13).
+    """
+    raw = environ.get(name)
+    if raw is None or raw.strip() == "":
+        raise StartupConfigError(
+            f"Required environment variable {name!r} is missing or empty. "
+            f"Set it in backend/.env (see backend/.env.example) before starting "
+            f"the backend."
+        )
+    return raw.strip()
+
+
+def resolve_whisper_model_size(value: str) -> tuple[str, Optional[str]]:
+    """Resolve the effective Whisper model size (Requirement 2.6).
+
+    Parameters
+    ----------
+    value:
+        The raw, non-empty ``WHISPER_MODEL_SIZE`` value (already validated by
+        :func:`_read_required_env`).
+
+    Returns
+    -------
+    tuple[str, Optional[str]]
+        ``(effective_size, warning)`` where ``effective_size`` is always in
+        :data:`ALLOWED_WHISPER_MODEL_SIZES`. ``warning`` is ``None`` when the
+        configured value was already valid, or a human-readable message
+        describing the fallback when it was not.
+    """
+    normalized = value.strip().lower()
+    if normalized in ALLOWED_WHISPER_MODEL_SIZES:
+        return normalized, None
+
+    warning = (
+        f"WHISPER_MODEL_SIZE={value!r} is not one of "
+        f"{sorted(ALLOWED_WHISPER_MODEL_SIZES)}; "
+        f"falling back to {DEFAULT_WHISPER_MODEL_SIZE!r}."
+    )
+    return DEFAULT_WHISPER_MODEL_SIZE, warning
+
+
+def load_startup_config(
+    environ: Optional[Mapping[str, str]] = None,
+) -> dict[str, object]:
+    """Validate required env keys and resolve derived configuration.
+
+    Parameters
+    ----------
+    environ:
+        Optional mapping used in place of :data:`os.environ`. Provided so unit
+        tests can exercise the function without mutating process state.
+
+    Returns
+    -------
+    dict[str, object]
+        Keys: ``google_api_key`` (str), ``whisper_model_size`` (str, one of
+        :data:`ALLOWED_WHISPER_MODEL_SIZES`), and ``whisper_warning``
+        (``str | None``).
+
+    Raises
+    ------
+    StartupConfigError
+        If ``GOOGLE_API_KEY`` or ``WHISPER_MODEL_SIZE`` is missing or empty
+        (Requirement 12.13).
+    """
+    env: Mapping[str, str] = environ if environ is not None else os.environ
+
+    # Validate every required key first so the error message is deterministic
+    # and ordered: ``GOOGLE_API_KEY`` is checked before ``WHISPER_MODEL_SIZE``.
+    values: dict[str, str] = {
+        key: _read_required_env(key, env) for key in _REQUIRED_ENV_KEYS
+    }
+
+    effective_size, warning = resolve_whisper_model_size(values["WHISPER_MODEL_SIZE"])
+
+    return {
+        "google_api_key": values["GOOGLE_API_KEY"],
+        "whisper_model_size": effective_size,
+        "whisper_warning": warning,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Module import-time bootstrap
+# ---------------------------------------------------------------------------
+
+# Load ``.env`` once at module import (Requirement 12.6). ``load_dotenv`` is a
+# no-op if no ``.env`` file is present, in which case validation below relies on
+# values already exported in the parent process environment.
+load_dotenv()
+
+try:
+    STARTUP_CONFIG: dict[str, object] = load_startup_config()
+except StartupConfigError as exc:
+    # Requirement 12.13: abort startup within 5 seconds with an error indicating
+    # which required environment key is missing or empty. Logging at ERROR level
+    # ensures the message is visible in uvicorn output before the import fails.
+    logger.error("Backend startup aborted: %s", exc)
+    raise
+
+#: Validated Google Gemini API key (Requirement 12.6).
+GOOGLE_API_KEY: str = str(STARTUP_CONFIG["google_api_key"])
+
+#: Effective Whisper model size after fallback resolution (Requirement 2.6).
+WHISPER_MODEL_SIZE: str = str(STARTUP_CONFIG["whisper_model_size"])
+
+#: Warning message recorded when ``WHISPER_MODEL_SIZE`` was outside the allowed
+#: set, or ``None`` when the configured value was already valid. Later pipeline
+#: tasks attach this warning to each Task_Registry entry per Requirement 2.6.
+WHISPER_MODEL_WARNING: Optional[str] = (
+    str(STARTUP_CONFIG["whisper_warning"])
+    if STARTUP_CONFIG["whisper_warning"] is not None
+    else None
+)
+
+if WHISPER_MODEL_WARNING:
+    logger.warning(WHISPER_MODEL_WARNING)
+
+
+# ---------------------------------------------------------------------------
+# FastAPI application, CORS, in-process Task_Registry, and lifespan
+# ---------------------------------------------------------------------------
+#
+# Added by task 4.1. This block constructs the FastAPI ``app`` instance,
+# locks CORS down to the single Frontend origin, declares the in-process
+# ``task_registry`` dictionary used as the source of truth for pipeline
+# progress, and wires a ``lifespan`` context manager that launches the
+# Cleanup_Task scanner coroutine on startup and cancels it gracefully on
+# shutdown.
+#
+# Implementation notes:
+#
+# * ``CORSMiddleware`` is configured with ``allow_origins=["http://localhost:3000"]``
+#   only (Requirements 4.9 and 12.12). Any other origin is rejected by the
+#   browser via the standard CORS handshake.
+# * ``task_registry: dict[str, dict]`` is a module-level dictionary. Per the
+#   design, "writes are confined to single-key mutations and reads by the SSE
+#   coroutine, so a ``dict`` is sufficient — no lock is required."
+# * ``_cleanup_scanner`` is intentionally a stub at this stage: its body is
+#   filled in by task 4.7 to scan ``/tmp/shorts_workspace/`` every 300 seconds
+#   and remove any Workspace_Directory older than 3600 seconds (Requirement
+#   3.7). Until then it is a no-op coroutine so the lifespan startup hook can
+#   schedule it without raising.
+# * The modern ``lifespan=`` kwarg is used in place of the deprecated
+#   ``@app.on_event("startup")`` / ``@app.on_event("shutdown")`` decorators.
+
+import asyncio
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+#: Single allowed CORS origin per Requirement 12.12. The Frontend is served at
+#: ``http://localhost:3000`` and no other origin may invoke the Backend.
+_ALLOWED_ORIGIN: str = "http://localhost:3000"
+
+#: In-process Task_Registry. Keys are Task_IDs (UUID4 strings); values are the
+#: per-task entries described in the design (``step``, ``progress``,
+#: ``created_at``, optional ``data``/``error``/``warning`` fields, plus
+#: leading-underscore stash fields populated by the upload route in task 4.2).
+task_registry: dict[str, dict] = {}
+
+
+async def _cleanup_scanner() -> None:
+    """Background scanner that purges stale Workspace_Directories.
+
+    The full implementation lands in task 4.7 — it will loop forever, sleeping
+    300 seconds between scans and removing any subdirectory of
+    ``/tmp/shorts_workspace/`` whose creation time is older than 3600 seconds
+    (Requirement 3.7). Until then this is a no-op coroutine so the lifespan
+    startup hook can schedule it without raising.
+    """
+    # Placeholder body. Task 4.7 will replace this with the real scan loop.
+    return None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """FastAPI lifespan context: launch and tear down the cleanup scanner.
+
+    On enter, schedule :func:`_cleanup_scanner` as a background task. On exit,
+    cancel that task and await its cancellation so the event loop shuts down
+    cleanly without leaking pending coroutines.
+    """
+    scanner_task = asyncio.create_task(_cleanup_scanner(), name="cleanup-scanner")
+    try:
+        yield
+    finally:
+        scanner_task.cancel()
+        try:
+            await scanner_task
+        except asyncio.CancelledError:
+            # Expected: ``scanner_task.cancel()`` raises ``CancelledError`` from
+            # the awaited task. Swallow it so shutdown completes cleanly.
+            pass
+
+
+#: FastAPI application instance. Routes are attached by tasks 4.2 and 4.6.
+app: FastAPI = FastAPI(lifespan=lifespan)
+
+# Lock CORS to the Frontend origin only (Requirements 4.9, 12.12). Note that
+# ``allow_origins`` accepts an exact list — wildcards would violate
+# Requirement 12.12 and are not used here.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[_ALLOWED_ORIGIN],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ---------------------------------------------------------------------------
+# Upload endpoint: POST /api/process-video
+# ---------------------------------------------------------------------------
+#
+# Added by task 4.2. Accepts a multipart upload (``video_file``) plus the
+# form fields (``style_tone``, ``shorts_count``, ``duration_per_short``),
+# validates them manually so 422 responses identify the offending field,
+# creates a Workspace_Directory under :data:`WORKSPACE_ROOT`, streams the
+# upload to disk in 1 MiB chunks, registers a Task_Registry entry, and
+# schedules the processing pipeline and cleanup as ``BackgroundTasks``.
+#
+# Implementation notes:
+#
+# * ``shorts_count`` and ``duration_per_short`` are declared as ``str`` form
+#   fields and parsed manually so the 422 error message shape is uniform
+#   across validation failures (otherwise FastAPI's automatic Pydantic
+#   coercion would emit a different envelope on non-integer input).
+# * Validation order is strict: every form-field check runs **before** any
+#   filesystem mutation, so a malformed request is rejected without
+#   creating a Workspace_Directory or registering a Task_Registry entry
+#   (Reqs 1.6, 1.7, 1.8, 1.11).
+# * :data:`WORKSPACE_ROOT` is the literal ``Path("/tmp/shorts_workspace")``
+#   per Reqs 1.2 and 3.1. On Windows this resolves under the current drive
+#   root (e.g. ``C:\tmp\shorts_workspace``); the path string is what
+#   matters for the spec.
+# * The chunked upload loop catches ``OSError`` (Req 1.12), removes any
+#   partially written state, and returns HTTP 500 without registering or
+#   scheduling background work.
+# * :func:`run_processing_pipeline` and :func:`cleanup_task_directory` are
+#   forward stubs at module level so the upload route can reference them
+#   by name. Their bodies are filled in by tasks 4.4 and 4.7 respectively.
+
+import time
+from pathlib import Path
+from uuid import uuid4
+
+from fastapi import BackgroundTasks, File, Form, HTTPException, UploadFile
+
+#: Base directory for per-task Workspace_Directories (Reqs 1.2, 3.1). The
+#: path is intentionally the literal ``/tmp/shorts_workspace`` to match the
+#: spec; OS-conditional branching is not introduced.
+WORKSPACE_ROOT: Path = Path("/tmp/shorts_workspace")
+
+#: Maximum trimmed length of ``style_tone`` (Req 1.8).
+MAX_STYLE_TONE_LEN: int = 500
+
+#: Inclusive bounds on ``shorts_count`` (Req 1.6).
+MIN_SHORTS_COUNT: int = 1
+MAX_SHORTS_COUNT: int = 10
+
+#: Allowed values for the ``duration_per_short`` form field (Req 1.7).
+ALLOWED_DURATIONS: frozenset[int] = frozenset({15, 30, 60})
+
+#: Streaming chunk size for the upload endpoint, in bytes (Req 1.12).
+UPLOAD_CHUNK_SIZE: int = 1024 * 1024  # 1 MiB
+
+
+# ---------------------------------------------------------------------------
+# Forward-declared coroutine stubs
+# ---------------------------------------------------------------------------
+#
+# These names must resolve at module import time so the route handler can
+# pass them to ``BackgroundTasks.add_task``. The real bodies land in tasks
+# 4.4 (pipeline) and 4.7 (cleanup); each stub is marked with a comment
+# naming its implementing task.
+
+
+async def run_processing_pipeline(task_id: str) -> None:
+    """Run the audio-extraction → transcription → analysis pipeline.
+
+    Forward stub. Body filled in by task 4.4.
+    """
+    # Body filled in by task 4.4.
+    return None
+
+
+async def cleanup_task_directory(task_id: str, delay: int = 3600) -> None:
+    """Remove the Workspace_Directory for *task_id* after *delay* seconds.
+
+    Forward stub. Body filled in by task 4.7.
+    """
+    # Body filled in by task 4.7.
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Pure validation helpers
+# ---------------------------------------------------------------------------
+
+
+def _validate_shorts_count(value: object) -> int:
+    """Coerce *value* to an int in ``[MIN_SHORTS_COUNT, MAX_SHORTS_COUNT]``.
+
+    Raises ``HTTPException(422, ...)`` on non-integer input or out-of-range
+    values (Req 1.6). The error ``detail`` always names ``shorts_count`` so
+    the client can display a precise message.
+    """
+    try:
+        coerced = int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"shorts_count must be an integer between "
+                f"{MIN_SHORTS_COUNT} and {MAX_SHORTS_COUNT} inclusive"
+            ),
+        ) from exc
+    if not (MIN_SHORTS_COUNT <= coerced <= MAX_SHORTS_COUNT):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"shorts_count must be an integer between "
+                f"{MIN_SHORTS_COUNT} and {MAX_SHORTS_COUNT} inclusive"
+            ),
+        )
+    return coerced
+
+
+def _validate_duration_per_short(value: object) -> int:
+    """Coerce *value* to an int in :data:`ALLOWED_DURATIONS`.
+
+    Raises ``HTTPException(422, ...)`` on non-integer input or values
+    outside ``{15, 30, 60}`` (Req 1.7).
+    """
+    try:
+        coerced = int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=422,
+            detail="duration_per_short must be one of {15, 30, 60}",
+        ) from exc
+    if coerced not in ALLOWED_DURATIONS:
+        raise HTTPException(
+            status_code=422,
+            detail="duration_per_short must be one of {15, 30, 60}",
+        )
+    return coerced
+
+
+def _validate_style_tone(value: str) -> str:
+    """Trim *value* and return it; raise 422 on empty or oversized input.
+
+    Per Req 1.8, ``style_tone`` must be a non-empty trimmed string of at
+    most :data:`MAX_STYLE_TONE_LEN` characters.
+    """
+    if not isinstance(value, str):
+        raise HTTPException(
+            status_code=422,
+            detail="style_tone must be a non-empty string after trimming whitespace",
+        )
+    trimmed = value.strip()
+    if not trimmed:
+        raise HTTPException(
+            status_code=422,
+            detail="style_tone must be a non-empty string after trimming whitespace",
+        )
+    if len(trimmed) > MAX_STYLE_TONE_LEN:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"style_tone must be at most {MAX_STYLE_TONE_LEN} characters "
+                f"after trimming"
+            ),
+        )
+    return trimmed
+
+
+def _cleanup_partial_upload(workspace: Path, output_path: Path) -> None:
+    """Best-effort removal of a partially populated Workspace_Directory.
+
+    Used after a validation or write failure when no Task_Registry entry
+    has been registered. Errors during cleanup are swallowed because the
+    periodic ``_cleanup_scanner`` (task 4.7) acts as a safety net, and the
+    long-delay :func:`cleanup_task_directory` is intentionally not
+    scheduled in this path (Req 1.12 forbids scheduling BackgroundTasks
+    when registration is skipped).
+    """
+    try:
+        output_path.unlink(missing_ok=True)
+    except OSError:
+        pass
+    try:
+        workspace.rmdir()
+    except OSError:
+        pass
+
+
+@app.post("/api/process-video")
+async def process_video(
+    background: BackgroundTasks,
+    video_file: UploadFile = File(...),
+    style_tone: str = Form(...),
+    shorts_count: str = Form(...),
+    duration_per_short: str = Form(...),
+) -> dict[str, str]:
+    """Accept a video upload and start the processing pipeline.
+
+    See Requirements 1.1 through 1.8, 1.11, and 1.12 for the full
+    contract. ``shorts_count`` and ``duration_per_short`` arrive as
+    ``str`` so the 422 envelope is controlled by the manual validators
+    rather than FastAPI's automatic Pydantic coercion.
+    """
+    # ---- 1) Manual form-field validation (Reqs 1.6, 1.7, 1.8). ----
+    # Order: count → duration → style_tone. Each helper raises 422 on
+    # failure BEFORE any filesystem mutation, satisfying the "no
+    # workspace, no registry" half of those requirements.
+    count = _validate_shorts_count(shorts_count)
+    duration = _validate_duration_per_short(duration_per_short)
+    tone = _validate_style_tone(style_tone)
+
+    # ---- 2) Multipart video-file presence check (Req 1.11). ----
+    if video_file is None or not video_file.filename:
+        raise HTTPException(
+            status_code=422,
+            detail="video_file is required",
+        )
+    # ``UploadFile.size`` may be ``None`` on some clients; in that case
+    # the empty-stream check after the chunked write below catches the
+    # zero-byte case.
+    if video_file.size is not None and video_file.size == 0:
+        raise HTTPException(
+            status_code=422,
+            detail="video_file is empty",
+        )
+
+    # ---- 3) Workspace creation (Req 1.2). ----
+    task_id = str(uuid4())
+    workspace = WORKSPACE_ROOT / task_id
+    # ``parents=True`` so :data:`WORKSPACE_ROOT` is created on first use;
+    # ``exist_ok=False`` so a UUID4 collision raises rather than silently
+    # reusing a directory that may already contain another task's files.
+    workspace.mkdir(parents=True, exist_ok=False)
+
+    # Preserve the original extension (Req 1.2). Default to ``"bin"`` if
+    # the upload has no extension at all so the on-disk filename is
+    # always well-formed.
+    ext = Path(video_file.filename).suffix.lower().lstrip(".") or "bin"
+    output_path = workspace / f"input.{ext}"
+
+    # ---- 4) Streamed chunked write (Req 1.12). ----
+    total_bytes = 0
+    try:
+        with output_path.open("wb") as out_fh:
+            while True:
+                chunk = await video_file.read(UPLOAD_CHUNK_SIZE)
+                if not chunk:
+                    break
+                out_fh.write(chunk)
+                total_bytes += len(chunk)
+    except OSError as exc:
+        # Best-effort cleanup of the partially-written file and the empty
+        # workspace directory. Do NOT register a Task_Registry entry and
+        # do NOT schedule BackgroundTasks (Req 1.12).
+        _cleanup_partial_upload(workspace, output_path)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save uploaded video.",
+        ) from exc
+
+    if total_bytes == 0:
+        # The stream was empty even though ``UploadFile.size`` was unknown
+        # at validation time. Treat as Req 1.11: no Workspace_Directory,
+        # no registry entry, no scheduled BackgroundTasks.
+        _cleanup_partial_upload(workspace, output_path)
+        raise HTTPException(
+            status_code=422,
+            detail="video_file is empty",
+        )
+
+    # ---- 5) Register Task_Registry entry (Reqs 1.3, 2.6). ----
+    # Single-key set, no lock needed (per design).
+    # The leading-underscore stash fields are how the pipeline (task
+    # 4.4) reads its inputs without re-parsing the form. ``warning``
+    # carries any Whisper fallback notice from startup so it is visible
+    # from the very first SSE message (Req 2.6).
+    task_registry[task_id] = {
+        "step": "Uploading",
+        "progress": 10,
+        "created_at": time.time(),
+        "data": None,
+        "error": None,
+        "warning": WHISPER_MODEL_WARNING,
+        "_style_tone": tone,
+        "_shorts_count": count,
+        "_duration_per_short": duration,
+        "_workspace": str(workspace),
+        "_input_path": str(output_path),
+    }
+
+    # ---- 6) Schedule background work (Req 1.4). ----
+    background.add_task(run_processing_pipeline, task_id)
+    background.add_task(cleanup_task_directory, task_id, 3600)
+
+    # ---- 7) Respond (Req 1.5). ----
+    return {"taskId": task_id}
