@@ -245,16 +245,16 @@ PHASE 3: GROWTH & MONETIZATION MULTIPLIERS
 
 15. MULTI-PLATFORM PUBLISHING
 ------------------------------
-[ ] 15.1 Implement OAuth connection to TikTok account
-[ ] 15.2 Implement OAuth connection to YouTube account
-[ ] 15.3 Implement OAuth connection to Instagram (Meta Business API)
-[ ] 15.4 Implement OAuth connection to LinkedIn
-[ ] 15.5 One-click publish to connected platforms
-[ ] 15.6 Schedule posts (pick date/time per platform)
-[ ] 15.7 Optimal time suggestions (based on platform analytics)
-[ ] 15.8 Cross-post to all platforms simultaneously
-[ ] 15.9 Platform-specific formatting (different titles/descriptions per platform)
-[ ] 15.10 Post status tracking (published, failed, scheduled)
+[x] 15.1 Implement OAuth connection to TikTok account
+[x] 15.2 Implement OAuth connection to YouTube account
+[x] 15.3 Implement OAuth connection to Instagram (Meta Business API)
+[x] 15.4 Implement OAuth connection to LinkedIn
+[x] 15.5 One-click publish to connected platforms
+[x] 15.6 Schedule posts (pick date/time per platform)
+[x] 15.7 Optimal time suggestions (based on platform analytics)
+[x] 15.8 Cross-post to all platforms simultaneously
+[x] 15.9 Platform-specific formatting (different titles/descriptions per platform)
+[x] 15.10 Post status tracking (published, failed, scheduled)
 
 16. ANALYTICS DASHBOARD
 ------------------------
