@@ -268,15 +268,15 @@ PHASE 3: GROWTH & MONETIZATION MULTIPLIERS
 
 17. TEAM & COLLABORATION
 --------------------------
-[ ] 17.1 Create team/workspace system (one team = one billing account)
-[ ] 17.2 Invite team members by email
-[ ] 17.3 Role-based access: Owner, Admin, Editor, Viewer
-[ ] 17.4 Shared project library (team members see all team projects)
-[ ] 17.5 Brand kit: upload logo, set brand colors, default fonts
-[ ] 17.6 Apply brand kit automatically to all renders
-[ ] 17.7 Approval workflow (editor submits → admin approves → publish)
-[ ] 17.8 Activity log (who did what, when)
-[ ] 17.9 Per-seat billing (add $10/mo per additional team member)
+[x] 17.1 Create team/workspace system (one team = one billing account)
+[x] 17.2 Invite team members by email
+[x] 17.3 Role-based access: Owner, Admin, Editor, Viewer
+[x] 17.4 Shared project library (team members see all team projects)
+[x] 17.5 Brand kit: upload logo, set brand colors, default fonts
+[x] 17.6 Apply brand kit automatically to all renders
+[x] 17.7 Approval workflow (editor submits → admin approves → publish)
+[x] 17.8 Activity log (who did what, when)
+[x] 17.9 Per-seat billing (add $10/mo per additional team member)
 
 18. API ACCESS (FOR DEVELOPERS & AGENCIES)
 -------------------------------------------
