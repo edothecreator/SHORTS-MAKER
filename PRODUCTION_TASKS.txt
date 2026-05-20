@@ -417,22 +417,22 @@ PHASE 4: POLISH & LAUNCH
 
 25. TESTING & QA
 -----------------
-[ ] 25.1 Write end-to-end tests (Playwright):
+[x] 25.1 Write end-to-end tests (Playwright):
          - Full signup → upload → render → download flow
          - Payment flow (Stripe test mode)
          - Error states (upload failure, render failure, payment failure)
-[ ] 25.2 Write integration tests for all API endpoints
-[ ] 25.3 Write unit tests for billing logic (credit deduction, limits)
-[ ] 25.4 Load testing (simulate 50 concurrent users)
-[ ] 25.5 Security audit:
+[x] 25.2 Write integration tests for all API endpoints
+[x] 25.3 Write unit tests for billing logic (credit deduction, limits)
+[x] 25.4 Load testing (simulate 50 concurrent users)
+[x] 25.5 Security audit:
          - SQL injection testing
          - XSS testing
          - CSRF testing
          - Auth bypass testing
          - File upload vulnerability testing
-[ ] 25.6 Cross-browser testing (Chrome, Firefox, Safari, Edge)
-[ ] 25.7 Mobile testing (iOS Safari, Android Chrome)
-[ ] 25.8 Accessibility audit (WCAG 2.1 AA minimum)
+[x] 25.6 Cross-browser testing (Chrome, Firefox, Safari, Edge)
+[x] 25.7 Mobile testing (iOS Safari, Android Chrome)
+[x] 25.8 Accessibility audit (WCAG 2.1 AA minimum)
 
 26. FINAL PRE-LAUNCH CHECKLIST
 -------------------------------
