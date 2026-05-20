@@ -79,3 +79,155 @@ export async function initFFmpeg(): Promise<FFmpeg> {
     throw err;
   }
 }
+
+
+// ---------------------------------------------------------------------------
+// ASS subtitle generation
+// ---------------------------------------------------------------------------
+// Task 11.2 — Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.9, 6.10
+
+import type { WordTimestamp, SubtitleStyle } from "../types";
+
+export interface AssResult {
+  ass: string;
+  empty: boolean;
+  errors: string[];
+}
+
+/**
+ * Convert seconds to ASS timestamp format: H:MM:SS.cs (two-digit centiseconds).
+ */
+export function toAssTime(secs: number): string {
+  const clamped = Math.max(0, secs);
+  const h = Math.floor(clamped / 3600);
+  const m = Math.floor((clamped % 3600) / 60);
+  const s = Math.floor(clamped % 60);
+  const cs = Math.round((clamped - Math.floor(clamped)) * 100);
+  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${String(cs).padStart(2, "0")}`;
+}
+
+/**
+ * Generate an ASS subtitle file for a single short segment.
+ *
+ * - Converts each word's start/end to clip-relative time by subtracting
+ *   segmentStartSec and clamping into [0, segmentDurSec].
+ * - Filters out words with missing/non-numeric/inverted timestamps.
+ * - Supports three styles: TikTok-animated, Bold-centered-white, Minimal-bottom.
+ * - When zero valid words remain, returns a syntactically complete ASS with
+ *   empty [Events] and `empty: true`.
+ */
+export function generateAssSubtitles(
+  words: WordTimestamp[],
+  segmentStartSec: number,
+  segmentDurSec: number,
+  style: SubtitleStyle
+): AssResult {
+  const errors: string[] = [];
+
+  // --- Filter and convert to clip-relative time ---
+  const validWords: { word: string; start: number; end: number }[] = [];
+
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+    if (
+      w == null ||
+      typeof w.start !== "number" ||
+      typeof w.end !== "number" ||
+      !isFinite(w.start) ||
+      !isFinite(w.end) ||
+      typeof w.word !== "string" ||
+      w.end <= w.start
+    ) {
+      errors.push(`Word at index ${i} skipped: invalid timestamps`);
+      continue;
+    }
+
+    // Convert to clip-relative and clamp to [0, segmentDurSec].
+    const relStart = Math.max(0, Math.min(w.start - segmentStartSec, segmentDurSec));
+    const relEnd = Math.max(0, Math.min(w.end - segmentStartSec, segmentDurSec));
+
+    if (relEnd <= relStart) {
+      errors.push(`Word at index ${i} skipped: zero duration after clamping`);
+      continue;
+    }
+
+    validWords.push({ word: w.word, start: relStart, end: relEnd });
+  }
+
+  // --- Build ASS header ---
+  const header = `[Script Info]
+Title: Shorts Subtitle
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+Timer: 100.0000
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Arial Black,64,&H00FFFFFF,&H0000FFFF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,4,2,2,10,10,120,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text`;
+
+  // If no valid words, return empty ASS.
+  if (validWords.length === 0) {
+    return { ass: header + "\n", empty: true, errors };
+  }
+
+  // --- Build dialogue lines based on style ---
+  let dialogues: string[] = [];
+
+  if (style === "TikTok-animated") {
+    // One Dialogue per word with override {\an2\c&H00FFFF&}
+    for (const w of validWords) {
+      const start = toAssTime(w.start);
+      const end = toAssTime(w.end);
+      dialogues.push(
+        `Dialogue: 0,${start},${end},Default,,0,0,120,,{\\an2\\c&H00FFFF&}${w.word}`
+      );
+    }
+  } else if (style === "Bold-centered-white") {
+    // Group 3-4 words per line, font 72, MarginV 120
+    const groups = groupWords(validWords, 4);
+    for (const group of groups) {
+      const start = toAssTime(group[0].start);
+      const end = toAssTime(group[group.length - 1].end);
+      const text = group.map((w) => w.word).join(" ");
+      dialogues.push(
+        `Dialogue: 0,${start},${end},Default,,0,0,120,,{\\an2\\fs72\\b1}${text}`
+      );
+    }
+  } else {
+    // Minimal-bottom: group 3-4 words per line, font 48, MarginV 60
+    const groups = groupWords(validWords, 4);
+    for (const group of groups) {
+      const start = toAssTime(group[0].start);
+      const end = toAssTime(group[group.length - 1].end);
+      const text = group.map((w) => w.word).join(" ");
+      dialogues.push(
+        `Dialogue: 0,${start},${end},Default,,0,0,60,,{\\an2\\fs48}${text}`
+      );
+    }
+  }
+
+  const ass = header + "\n" + dialogues.join("\n") + "\n";
+  return { ass, empty: false, errors };
+}
+
+/**
+ * Group words into chunks of up to `maxPerGroup` (3-4 words per line).
+ * Tries to keep groups balanced (at least 3 per group when possible).
+ */
+function groupWords<T>(items: T[], maxPerGroup: number): T[][] {
+  const groups: T[][] = [];
+  let i = 0;
+  while (i < items.length) {
+    const remaining = items.length - i;
+    // If remaining would leave a lonely 1-2 words in the next group,
+    // take 3 instead of 4 to balance.
+    const take = remaining <= maxPerGroup ? remaining : Math.min(maxPerGroup, remaining);
+    groups.push(items.slice(i, i + take));
+    i += take;
+  }
+  return groups;
+}
