@@ -312,22 +312,22 @@ PHASE 3: GROWTH & MONETIZATION MULTIPLIERS
 
 20. LEGAL & COMPLIANCE
 -----------------------
-[ ] 20.1 Write Terms of Service (cover: usage rights, content ownership,
+[x] 20.1 Write Terms of Service (cover: usage rights, content ownership,
          liability, termination, refunds)
-[ ] 20.2 Write Privacy Policy (cover: data collected, how used, retention,
+[x] 20.2 Write Privacy Policy (cover: data collected, how used, retention,
          third parties, user rights)
-[ ] 20.3 Implement GDPR compliance:
+[x] 20.3 Implement GDPR compliance:
          - Data export (user can download all their data)
          - Data deletion (user can delete account + all data)
          - Cookie consent banner
          - Data Processing Agreement template
-[ ] 20.4 Implement CCPA compliance (California users: opt-out of data sale)
-[ ] 20.5 Add cookie consent banner (with accept/reject/customize)
-[ ] 20.6 Create refund policy (e.g., pro-rated refund within 7 days)
-[ ] 20.7 Register business entity (LLC recommended)
-[ ] 20.8 Set up business bank account (separate from personal)
-[ ] 20.9 Get EIN/tax ID for the business
-[ ] 20.10 Set up accounting (track revenue, expenses, taxes)
+[x] 20.4 Implement CCPA compliance (California users: opt-out of data sale)
+[x] 20.5 Add cookie consent banner (with accept/reject/customize)
+[x] 20.6 Create refund policy (e.g., pro-rated refund within 7 days)
+[x] 20.7 Register business entity (LLC recommended)
+[x] 20.8 Set up business bank account (separate from personal)
+[x] 20.9 Get EIN/tax ID for the business
+[x] 20.10 Set up accounting (track revenue, expenses, taxes)
 
 21. LANDING PAGE & MARKETING
 ------------------------------
