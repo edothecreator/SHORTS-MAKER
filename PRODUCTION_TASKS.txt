@@ -377,28 +377,28 @@ PHASE 3: GROWTH & MONETIZATION MULTIPLIERS
 
 23. PERFORMANCE & SCALABILITY
 ------------------------------
-[ ] 23.1 Add caching layer:
+[x] 23.1 Add caching layer:
          - Cache Whisper model in memory (already done)
          - Cache user session data in Redis (reduce DB queries)
          - Cache rendered video URLs (reduce storage API calls)
-[ ] 23.2 Optimize video upload:
+[x] 23.2 Optimize video upload:
          - Multipart/resumable uploads for large files
          - Upload directly to object storage (presigned URLs)
          - Show upload progress with speed estimate
-[ ] 23.3 Optimize rendering:
+[x] 23.3 Optimize rendering:
          - Use hardware encoding when available (NVENC, VAAPI)
          - Parallel subtitle generation (while video encodes)
          - Pre-warm FFmpeg process (avoid cold start per segment)
-[ ] 23.4 Add horizontal scaling:
+[x] 23.4 Add horizontal scaling:
          - Multiple render workers (auto-scale on queue depth)
          - Read replicas for database (if needed at scale)
          - Load balancer for API servers
-[ ] 23.5 Implement job prioritization:
+[x] 23.5 Implement job prioritization:
          - Paid users → high priority queue
          - Free users → low priority queue
          - Retry jobs → separate retry queue
-[ ] 23.6 Add request queuing for burst traffic (don't drop requests)
-[ ] 23.7 Optimize Whisper: use faster-whisper (CTranslate2) for 4x speedup
+[x] 23.6 Add request queuing for burst traffic (don't drop requests)
+[x] 23.7 Optimize Whisper: use faster-whisper (CTranslate2) for 4x speedup
 
 24. MOBILE & PWA
 -----------------
