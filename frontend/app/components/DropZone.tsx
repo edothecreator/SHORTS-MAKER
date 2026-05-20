@@ -3,6 +3,38 @@
 import { useState, useRef, useCallback } from "react";
 
 // Task 8.1 — Requirements: 1.9, 1.10, 8.1, 8.2, 8.3
+//
+// ─── Task 12.1: URL Input Field (Frontend Integration Plan) ───────────────────
+// This DropZone component will be extended to include a URL input field alongside
+// the existing file upload. Implementation notes:
+//
+// 1. Add a tabbed interface or "OR" divider below the drag-and-drop zone:
+//    - Tab 1 / Section 1: File Upload (existing drag & drop)
+//    - Tab 2 / Section 2: URL Input (text field + "Process" button)
+//
+// 2. URL Input field requirements:
+//    - Text input with placeholder: "Paste YouTube, Vimeo, Twitter/X, Instagram, or TikTok URL"
+//    - "Process URL" button (disabled until valid URL pattern detected)
+//    - Client-side pattern validation for supported platforms before sending to backend
+//    - Display copyright disclaimer (from backend COPYRIGHT_DISCLAIMER) with checkbox
+//    - User must accept terms before URL processing begins
+//
+// 3. On submit:
+//    - Call backend POST /api/v1/download/validate with the URL
+//    - Show video metadata (title, duration) in a confirmation card
+//    - Check duration against plan limits (displayed from backend response)
+//    - On confirm, call POST /api/v1/download/start → shows progress bar
+//    - Progress updates via WebSocket (same channel as render progress)
+//
+// 4. Props to add: onUrlSubmitted: (url: string) => void
+//
+// 5. The DropZone interface will be updated:
+//    interface DropZoneProps {
+//      onFileSelected: (file: File) => void;
+//      onUrlSubmitted?: (url: string) => void;
+//      disabled?: boolean;
+//    }
+// ──────────────────────────────────────────────────────────────────────────────
 
 const ALLOWED_EXTENSIONS = new Set([".mp4", ".mov", ".mkv"]);
 const MAX_FILE_SIZE = 2_147_483_648; // 2 GB

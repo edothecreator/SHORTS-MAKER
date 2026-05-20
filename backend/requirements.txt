@@ -13,3 +13,4 @@ websockets
 stripe
 mediapipe
 numpy
+yt-dlp

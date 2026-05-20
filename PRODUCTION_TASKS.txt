@@ -206,15 +206,15 @@ PHASE 2: COMPETITIVE FEATURES (What makes users choose you over OpusClip)
 
 12. YOUTUBE URL INPUT
 ---------------------
-[ ] 12.1 Add URL input field alongside file upload
-[ ] 12.2 Integrate yt-dlp on server for YouTube video download
-[ ] 12.3 Support YouTube, Vimeo, Twitter/X video URLs
-[ ] 12.4 Show download progress in UI
-[ ] 12.5 Validate URL before download (check if video exists, check duration)
-[ ] 12.6 Set max duration limit (60 minutes for free, 180 for paid)
-[ ] 12.7 Handle age-restricted / private video errors gracefully
-[ ] 12.8 Cache downloaded videos for 1 hour (avoid re-download on re-process)
-[ ] 12.9 Add copyright disclaimer / terms acceptance before URL processing
+[x] 12.1 Add URL input field alongside file upload
+[x] 12.2 Integrate yt-dlp on server for YouTube video download
+[x] 12.3 Support YouTube, Vimeo, Twitter/X video URLs
+[x] 12.4 Show download progress in UI
+[x] 12.5 Validate URL before download (check if video exists, check duration)
+[x] 12.6 Set max duration limit (60 minutes for free, 180 for paid)
+[x] 12.7 Handle age-restricted / private video errors gracefully
+[x] 12.8 Cache downloaded videos for 1 hour (avoid re-download on re-process)
+[x] 12.9 Add copyright disclaimer / terms acceptance before URL processing
 
 13. PROJECT HISTORY & MANAGEMENT
 ---------------------------------
