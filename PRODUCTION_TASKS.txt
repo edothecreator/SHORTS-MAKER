@@ -357,23 +357,23 @@ PHASE 3: GROWTH & MONETIZATION MULTIPLIERS
 
 22. MONITORING, LOGGING & RELIABILITY
 ---------------------------------------
-[ ] 22.1 Set up error tracking (Sentry — free tier: 5K events/mo)
-[ ] 22.2 Set up structured logging (JSON format, shipped to central store)
-[ ] 22.3 Set up uptime monitoring with alerting (PagerDuty or email)
-[ ] 22.4 Add performance monitoring (track render times, API latency)
-[ ] 22.5 Set up database backups (daily automated, 30-day retention)
-[ ] 22.6 Create runbook for common incidents:
+[x] 22.1 Set up error tracking (Sentry — free tier: 5K events/mo)
+[x] 22.2 Set up structured logging (JSON format, shipped to central store)
+[x] 22.3 Set up uptime monitoring with alerting (PagerDuty or email)
+[x] 22.4 Add performance monitoring (track render times, API latency)
+[x] 22.5 Set up database backups (daily automated, 30-day retention)
+[x] 22.6 Create runbook for common incidents:
          - Render worker crash → auto-restart + retry job
          - Database connection exhausted → scale pool
          - Storage full → alert + cleanup old renders
          - Gemini API down → queue jobs, retry when back
-[ ] 22.7 Implement graceful degradation:
+[x] 22.7 Implement graceful degradation:
          - If Gemini down: show "AI analysis temporarily unavailable"
          - If render worker busy: show queue position
          - If storage near limit: warn user, block new uploads
-[ ] 22.8 Set up status page (Instatus or Cachet — show system health)
-[ ] 22.9 Implement database connection retry logic
-[ ] 22.10 Add circuit breaker for external API calls (Gemini, Stripe)
+[x] 22.8 Set up status page (Instatus or Cachet — show system health)
+[x] 22.9 Implement database connection retry logic
+[x] 22.10 Add circuit breaker for external API calls (Gemini, Stripe)
 
 23. PERFORMANCE & SCALABILITY
 ------------------------------
