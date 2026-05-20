@@ -218,14 +218,14 @@ PHASE 2: COMPETITIVE FEATURES (What makes users choose you over OpusClip)
 
 13. PROJECT HISTORY & MANAGEMENT
 ---------------------------------
-[ ] 13.1 Save every processing job as a "project" in database
-[ ] 13.2 Project list page (grid view with thumbnails, date, status)
-[ ] 13.3 Re-open completed project (view results, re-download)
-[ ] 13.4 Re-process with different settings (new style, different count)
-[ ] 13.5 Delete project (remove from DB + delete stored videos)
-[ ] 13.6 Search projects by title/date
-[ ] 13.7 Favorite/star projects
-[ ] 13.8 Show storage usage per user (X GB of Y GB used)
+[x] 13.1 Save every processing job as a "project" in database
+[x] 13.2 Project list page (grid view with thumbnails, date, status)
+[x] 13.3 Re-open completed project (view results, re-download)
+[x] 13.4 Re-process with different settings (new style, different count)
+[x] 13.5 Delete project (remove from DB + delete stored videos)
+[x] 13.6 Search projects by title/date
+[x] 13.7 Favorite/star projects
+[x] 13.8 Show storage usage per user (X GB of Y GB used)
 
 14. BETTER OUTPUT OPTIONS
 --------------------------
