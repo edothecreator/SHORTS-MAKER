@@ -258,13 +258,13 @@ PHASE 3: GROWTH & MONETIZATION MULTIPLIERS
 
 16. ANALYTICS DASHBOARD
 ------------------------
-[ ] 16.1 Connect to platform APIs to pull engagement data
-[ ] 16.2 Show per-clip metrics: views, likes, comments, shares
-[ ] 16.3 Show aggregate metrics: total views, best performing clips
-[ ] 16.4 Compare performance across platforms
-[ ] 16.5 Show trends over time (weekly/monthly growth)
-[ ] 16.6 Identify best-performing content patterns
-[ ] 16.7 Export analytics as CSV/PDF
+[x] 16.1 Connect to platform APIs to pull engagement data
+[x] 16.2 Show per-clip metrics: views, likes, comments, shares
+[x] 16.3 Show aggregate metrics: total views, best performing clips
+[x] 16.4 Compare performance across platforms
+[x] 16.5 Show trends over time (weekly/monthly growth)
+[x] 16.6 Identify best-performing content patterns
+[x] 16.7 Export analytics as CSV/PDF
 
 17. TEAM & COLLABORATION
 --------------------------
