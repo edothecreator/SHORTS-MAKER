@@ -8,3 +8,5 @@ pydantic
 asyncpg
 redis
 bcrypt
+boto3
+websockets
