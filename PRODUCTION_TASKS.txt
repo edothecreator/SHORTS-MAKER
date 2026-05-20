@@ -47,20 +47,20 @@ PHASE 1: FOUNDATION (Must have before ANY user pays)
 
 3. CLOUD RENDERING (REPLACE BROWSER ffmpeg.wasm)
 -------------------------------------------------
-[ ] 3.1  Create render worker service (Python process that pulls from job queue)
-[ ] 3.2  Implement job queue (Redis + Bull for Node or Celery for Python)
-[ ] 3.3  Move FFmpeg rendering to server-side (same commands, but on server)
-[ ] 3.4  Add GPU-accelerated encoding option (NVENC) with CPU fallback
-[ ] 3.5  Implement ASS subtitle generation on server (port from TypeScript)
-[ ] 3.6  Upload rendered clips to object storage (S3/R2/GCS)
-[ ] 3.7  Generate thumbnail for each clip (FFmpeg single frame extract)
-[ ] 3.8  Return signed/temporary URLs to frontend for preview + download
-[ ] 3.9  Implement render progress via WebSocket (per-segment updates)
-[ ] 3.10 Add render timeout (5 minutes per segment max)
-[ ] 3.11 Add render retry on failure (max 2 retries)
-[ ] 3.12 Clean up source video from storage after all segments rendered
-[ ] 3.13 Support concurrent renders (multiple workers pulling from queue)
-[ ] 3.14 Add priority queue (paid users render before free users)
+[x] 3.1  Create render worker service (Python process that pulls from job queue)
+[x] 3.2  Implement job queue (Redis + Bull for Node or Celery for Python)
+[x] 3.3  Move FFmpeg rendering to server-side (same commands, but on server)
+[x] 3.4  Add GPU-accelerated encoding option (NVENC) with CPU fallback
+[x] 3.5  Implement ASS subtitle generation on server (port from TypeScript)
+[x] 3.6  Upload rendered clips to object storage (S3/R2/GCS)
+[x] 3.7  Generate thumbnail for each clip (FFmpeg single frame extract)
+[x] 3.8  Return signed/temporary URLs to frontend for preview + download
+[x] 3.9  Implement render progress via WebSocket (per-segment updates)
+[x] 3.10 Add render timeout (5 minutes per segment max)
+[x] 3.11 Add render retry on failure (max 2 retries)
+[x] 3.12 Clean up source video from storage after all segments rendered
+[x] 3.13 Support concurrent renders (multiple workers pulling from queue)
+[x] 3.14 Add priority queue (paid users render before free users)
 
 4. OBJECT STORAGE
 -----------------
