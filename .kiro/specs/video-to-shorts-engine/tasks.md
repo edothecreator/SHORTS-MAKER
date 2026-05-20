@@ -91,7 +91,7 @@ The implementation order is: scaffold the repository, build the backend pipeline
     - Respond `{"taskId": task_id}`
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.11, 1.12_
 
-  - [ ] 4.3 Implement `_extract_audio` async subprocess wrapper in `backend/main.py`
+  - [x] 4.3 Implement `_extract_audio` async subprocess wrapper in `backend/main.py`
     - Invoke `ffmpeg -y -nostdin -i {input} -vn -acodec pcm_s16le -ac 1 -ar 16000 {audio.wav}` via `asyncio.create_subprocess_exec`
     - Wrap in `asyncio.wait_for(..., timeout=600)`
     - Convert non-zero rc, `TimeoutError`, and `FileNotFoundError` into a `RuntimeError("Audio extraction failed: ...")` with the underlying cause

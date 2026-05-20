@@ -574,3 +574,142 @@ async def process_video(
 
     # ---- 7) Respond (Req 1.5). ----
     return {"taskId": task_id}
+
+
+
+# ---------------------------------------------------------------------------
+# Audio extraction helper
+# ---------------------------------------------------------------------------
+#
+# Added by task 4.3. ``run_processing_pipeline`` (task 4.4) calls this
+# helper to convert the uploaded video into the 16 kHz mono PCM
+# ``audio.wav`` that Whisper consumes.
+#
+# Per Reqs 2.2 and 2.3, the helper:
+#
+# * Invokes the system ``ffmpeg`` binary via ``asyncio.create_subprocess_exec``
+#   (NOT a shell) with the exact arguments mandated by the task description.
+# * Caps the subprocess at :data:`AUDIO_EXTRACTION_TIMEOUT_SECONDS` (600 s)
+#   via ``asyncio.wait_for``. On timeout, the child is killed and reaped so
+#   it does not leak past the FastAPI worker.
+# * Converts the three failure modes (non-zero return code, ``TimeoutError``,
+#   ``FileNotFoundError`` for the missing binary) into a single
+#   ``RuntimeError("Audio extraction failed: ...")`` whose message embeds
+#   the underlying cause and whose ``__cause__`` is set via ``raise ... from``.
+#
+# Pipeline ownership of the Task_Registry update (``step="Failed"`` etc.)
+# stays in :func:`run_processing_pipeline` (task 4.4); this helper only
+# raises.
+
+#: Cap on the ``ffmpeg`` audio-extraction subprocess, in seconds (Req 2.2).
+AUDIO_EXTRACTION_TIMEOUT_SECONDS: int = 600
+
+#: Tail length, in characters, of the ``ffmpeg`` stderr included in the
+#: ``RuntimeError`` message on non-zero rc. Capped so a verbose ffmpeg log
+#: cannot blow up the Task_Registry entry or SSE payload.
+_FFMPEG_STDERR_TAIL_CHARS: int = 500
+
+
+async def _extract_audio(input_path: Path, audio_path: Path) -> None:
+    """Run ``ffmpeg`` to produce 16 kHz mono PCM ``audio.wav``.
+
+    The command line is exactly::
+
+        ffmpeg -y -nostdin -i <input_path> -vn -acodec pcm_s16le \\
+               -ac 1 -ar 16000 <audio_path>
+
+    Parameters
+    ----------
+    input_path:
+        Path to the uploaded source video, written by the upload route.
+    audio_path:
+        Destination path for the extracted ``.wav`` (typically
+        ``{workspace}/audio.wav``).
+
+    Raises
+    ------
+    RuntimeError
+        On any of the three failure modes from Req 2.3:
+
+        * ``ffmpeg`` binary not on PATH (``FileNotFoundError`` from
+          ``asyncio.create_subprocess_exec``),
+        * subprocess exceeds :data:`AUDIO_EXTRACTION_TIMEOUT_SECONDS`
+          (``asyncio.TimeoutError``),
+        * subprocess exits with a non-zero return code.
+
+        The exception message starts with ``"Audio extraction failed: "``
+        and embeds the underlying cause; the original exception is
+        chained via ``__cause__``.
+    """
+    args: list[str] = [
+        "ffmpeg",
+        "-y",
+        "-nostdin",
+        "-i",
+        str(input_path),
+        "-vn",
+        "-acodec",
+        "pcm_s16le",
+        "-ac",
+        "1",
+        "-ar",
+        "16000",
+        str(audio_path),
+    ]
+
+    # Spawn the subprocess. ``FileNotFoundError`` raised here means the
+    # ``ffmpeg`` binary itself is not on PATH (Req 2.3 third failure
+    # mode). A *missing input file* manifests later as a non-zero return
+    # code instead, because ffmpeg starts up and only then fails to open
+    # its input.
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *args,
+            stdin=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            f"Audio extraction failed: ffmpeg binary not found on PATH ({exc})"
+        ) from exc
+
+    # Read both pipes concurrently via ``communicate`` (avoids a pipe-buffer
+    # deadlock on verbose ffmpeg stderr) and enforce the 600 s cap.
+    try:
+        _, stderr_bytes = await asyncio.wait_for(
+            proc.communicate(),
+            timeout=AUDIO_EXTRACTION_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError as exc:
+        # ``asyncio.wait_for`` cancels its inner task but does NOT kill the
+        # underlying OS process, so do that explicitly. Reap with a short
+        # bound to avoid a second, indefinite hang if the process is
+        # already gone or un-killable.
+        try:
+            proc.kill()
+        except ProcessLookupError:
+            # Already exited between the timeout and the kill.
+            pass
+        try:
+            await asyncio.wait_for(proc.wait(), timeout=5.0)
+        except asyncio.TimeoutError:
+            # Best-effort: the OS will reap the zombie. Do not block the
+            # pipeline on a stuck child.
+            pass
+        raise RuntimeError(
+            f"Audio extraction failed: ffmpeg exceeded "
+            f"{AUDIO_EXTRACTION_TIMEOUT_SECONDS}s timeout"
+        ) from exc
+
+    if proc.returncode != 0:
+        stderr_text = (stderr_bytes or b"").decode("utf-8", errors="replace").strip()
+        tail = (
+            stderr_text[-_FFMPEG_STDERR_TAIL_CHARS:]
+            if stderr_text
+            else "<no stderr>"
+        )
+        raise RuntimeError(
+            f"Audio extraction failed: ffmpeg exited with rc={proc.returncode}: "
+            f"{tail}"
+        )
